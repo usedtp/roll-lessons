@@ -241,5 +241,33 @@
   "rageMissing": {
     "title": "Rage Damage not added",
     "text": "The 2024 Player's Handbook gives Rage Damage to any attack that uses Strength, thrown weapons included. dnd5e only adds it to melee weapon attacks, so this total is missing it. Add +{rage} by hand."
+  },
+  "prof.none": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "The Proficiency Bonus is added only to saving throws, skills, tools and attacks the creature is proficient in."
+  },
+  "notFromRules": {
+    "title": "Not from a Player's Handbook rule",
+    "showPart": true,
+    "text": "No rule for this kind of roll produces this number, and no bonus setting, item or effect on the creature holds it. It is recorded in the roll log for review."
+  },
+  "addedAfterBuild": {
+    "title": "Added after the roll was set up",
+    "text": "This amount was added to the roll after its parts were set, so it has no rule source. It is recorded in the roll log for review."
+  },
+  "ac5eBonus": {
+    "title": "Bonus from Automated Conditions 5e",
+    "showSource": true,
+    "text": "Automated Conditions 5e added this bonus because the named effect or condition applies to this roll."
+  },
+  "actorAttackBonus": {
+    "title": "Attack bonus",
+    "showSource": true,
+    "text": "A bonus the character adds to attack rolls of this type, from a feature, item or effect."
+  },
+  "defenses": {
+    "title": "Resistance, Immunity and Vulnerability",
+    "text": "Resistance halves damage of that type (round down). Vulnerability doubles it. Immunity means no damage of that type. These apply when the damage is applied to the target, not to the roll."
   }
 }

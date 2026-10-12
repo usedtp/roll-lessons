@@ -1,7 +1,8 @@
 import { MODULE_ID, cfg, registerSettings, refreshSettings } from "./settings.mjs";
 import { RuleBook } from "./rules.mjs";
-import { buildLessons, addReasons, kindFromHookNames } from "./breakdown.mjs";
+import { buildLessons, addReasons, kindFromHookNames, restoreParts } from "./breakdown.mjs";
 import { injectPanels } from "./render.mjs";
+import { logMessage, flushLog, LOG_DIR } from "./log.mjs";
 
 Hooks.once("init", () => {
   registerSettings(() => RuleBook.load());
@@ -9,6 +10,8 @@ Hooks.once("init", () => {
   Hooks.on("dnd5e.postRollConfiguration", onPostRollConfiguration);
   Hooks.on("dnd5e.preConfigureInitiative", onPreConfigureInitiative);
   Hooks.on("dnd5e.renderChatMessage", injectPanels);
+  Hooks.on("createChatMessage", logMessage);
+  game.modules.get(MODULE_ID).api = { flushLog, LOG_DIR };
 });
 
 Hooks.once("setup", refreshSettings);
@@ -22,6 +25,9 @@ Hooks.once("ready", () => {
   RuleBook.load();
 });
 
+/** Labelled roll parts per roll process, so rebuilt configs keep their sources. Garbage collected with the process. */
+const labelledParts = new WeakMap();
+
 function kindOf(config, roll) {
   const kind = kindFromHookNames(config?.hookNames);
   if (kind !== "generic" || !roll) return kind;
@@ -33,11 +39,17 @@ function kindOf(config, roll) {
  * Each roll config is final here, with or without the roll dialog. The stamp rides into the roll
  * through config.options. Fires once per hook name, so only the generic "" pass is used.
  */
-function onPostBuildRollConfig(process, rc) {
+function onPostBuildRollConfig(process, rc, index = 0) {
   if (!cfg.enabled || !rc) return;
   try {
+    // Remember the labelled parts from the first build of this roll, keyed by the process config.
+    let byIndex = labelledParts.get(process);
+    if (!byIndex) labelledParts.set(process, (byIndex = new Map()));
+    const parts = rc.parts ?? [];
+    if (parts.some(p => String(p).includes("@"))) byIndex.set(index, [...parts]);
+    const effective = { ...rc, parts: restoreParts(byIndex.get(index), parts, rc.data) };
     rc.options ??= {};
-    rc.options.rollLessons = buildLessons(process, rc, kindOf(process));
+    rc.options.rollLessons = buildLessons(process, effective, kindOf(process));
   } catch (err) {
     console.error(`${MODULE_ID} | postBuildRollConfig failed`, err);
   }

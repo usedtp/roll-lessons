@@ -28,6 +28,10 @@
       "debug": {
         "name": "Debug logging",
         "hint": "Write roll configuration details to the browser console (F12). Use this when reporting a problem."
+      },
+      "rollLog": {
+        "name": "Roll log",
+        "hint": "Record every roll's breakdown to Data/roll-lessons-logs/ (one file per day) so problems can be found and fixed later. Written by the GM's browser."
       }
     },
     "panel": {
@@ -45,10 +49,25 @@
       "noReason": "dnd5e did not report a reason. It may have been chosen in the roll dialog or with a held key.",
       "criticalHit": "Critical hit",
       "base": "Base",
-      "unknownSource": "Unnamed effect",
+      "unknownSource": "Added after the roll was set up",
       "fromPart": "Roll part",
       "rolled": "rolled",
-      "critDoubled": "doubled by the critical hit to"
+      "critDoubled": "doubled by the critical hit to",
+      "dcBuilt": "DC {dc} = 8 + {caster}'s {ability} modifier ({mod}) + Proficiency Bonus ({prof}).",
+      "dcSet": "DC {dc}, set on {item}.",
+      "saveSucceeded": "Succeeded: {total} meets DC {dc}.",
+      "saveFailed": "Failed: {total} is below DC {dc}.",
+      "saveAgainst": "Save against",
+      "outcome": "Outcome",
+      "attackHit": "{name}: Hit. {total} meets AC {ac}.",
+      "attackMiss": "{name}: Miss. {total} is below AC {ac}.",
+      "attackCrit": "{name}: Critical Hit (natural 20). Hits regardless of AC.",
+      "attackFumble": "{name}: Miss (natural 1). Misses regardless of AC.",
+      "defenses": "Target defenses",
+      "resist": "Resistance to {type} ({source}): halved, rounded down.",
+      "immune": "Immunity to {type} ({source}): no damage.",
+      "vulnerable": "Vulnerability to {type} ({source}): doubled.",
+      "takes": "Takes {amount}."
     },
     "warn": {
       "system": "Roll Lessons only works with the dnd5e system.",

@@ -54,8 +54,132 @@ function flatTotal(roll) {
   return sum;
 }
 
+function docFrom(uuid) {
+  try { return uuid ? fromUuidSync(uuid) : null; } catch (err) { return null; }
+}
+
+function abilityLabel(id) {
+  return CONFIG.DND5E?.abilities?.[id]?.label ?? id;
+}
+
+/** Plain text of an item description, with enricher links reduced to their labels. */
+function plainText(html) {
+  const s = String(html ?? "")
+    .replace(/@\w+\[[^\]]*\]\{([^}]*)\}/g, "$1")
+    .replace(/@\w+\[([^\]]*)\]/g, "$1")
+    .replace(/\[\[[^\]]*\]\](\{([^}]*)\})?/g, "$2")
+    .replace(/<[^>]+>/g, " ");
+  const div = document.createElement("div");
+  div.innerHTML = s;
+  return (div.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+/** Sentences from the item's own text that say what happens on a failed or successful save. */
+function saveOutcomeText(item) {
+  const text = plainText(item?.system?.description?.value);
+  if (!text) return [];
+  return text.split(/(?<=[.!?])\s+/)
+    .filter(s => /saving throw|failed save|successful save|on a failure|on a success|succeed|fail|half as much/i.test(s))
+    .slice(0, 3);
+}
+
+/** Save against a spell or ability: how the DC was built, the result, and what it means. */
+function saveNotes(message, roll, body) {
+  const dc = roll.options?.target;
+  if (typeof dc !== "number") return false;
+  const activity = docFrom(message?.system?.activity?.uuid);
+  const lines = [];
+  if (activity) {
+    const caster = activity.actor;
+    const item = activity.item;
+    const calc = activity.save?.dc?.calculation;
+    const abilityId = calc === "spellcasting" ? (item?.system?.ability || caster?.system?.attributes?.spellcasting) : (calc && caster?.system?.abilities?.[calc] ? calc : null);
+    const m = abilityId ? caster?.system?.abilities?.[abilityId]?.mod : null;
+    const p = caster?.system?.attributes?.prof;
+    if (typeof m === "number" && typeof p === "number" && 8 + m + p === dc) {
+      lines.push(game.i18n.format("ROLLLESSONS.panel.dcBuilt", { dc, caster: caster.name, ability: abilityLabel(abilityId), mod: signed(m), prof: signed(p) }));
+    } else if (item) {
+      lines.push(game.i18n.format("ROLLLESSONS.panel.dcSet", { dc, item: item.name }));
+    }
+    const ok = roll.isSuccess ?? roll.total >= dc;
+    lines.push(game.i18n.format(ok ? "ROLLLESSONS.panel.saveSucceeded" : "ROLLLESSONS.panel.saveFailed", { total: roll.total, dc }));
+    for (const s of saveOutcomeText(item)) lines.push(s);
+    body.append(note(`${t("panel.saveAgainst")} ${item?.name ?? ""}`.trim(), lines));
+    return true;
+  }
+  const ok = roll.isSuccess ?? roll.total >= dc;
+  body.append(note(t("panel.target"), [game.i18n.format(ok ? "ROLLLESSONS.panel.saveSucceeded" : "ROLLLESSONS.panel.saveFailed", { total: roll.total, dc })]));
+  return true;
+}
+
+function targetActor(t) {
+  return docFrom(t?.actor) ?? docFrom(t?.token)?.actor ?? null;
+}
+
+/** Attack against each target's Armor Class. */
+function attackNotes(message, roll, body) {
+  const targets = message?.system?.targets ?? [];
+  if (!targets.length) return false;
+  const die = roll.dice?.[0];
+  const natural = die?.total;
+  const lines = targets.map(tg => {
+    let ac = tg.ac;
+    if (typeof ac !== "number" || ac >= 99) ac = targetActor(tg)?.system?.attributes?.ac?.value;
+    if (natural === 20 || roll.isCritical) return game.i18n.format("ROLLLESSONS.panel.attackCrit", { name: tg.name });
+    if (natural === 1 || roll.isFumble) return game.i18n.format("ROLLLESSONS.panel.attackFumble", { name: tg.name });
+    if (typeof ac !== "number") return `${tg.name}: ${roll.total}`;
+    return game.i18n.format(roll.total >= ac ? "ROLLLESSONS.panel.attackHit" : "ROLLLESSONS.panel.attackMiss", { name: tg.name, total: roll.total, ac });
+  });
+  body.append(note(t("panel.outcome"), lines));
+  return true;
+}
+
+/** Resistance, Immunity and Vulnerability of each target to this damage. */
+function defenseNotes(message, roll, body) {
+  const type = roll.options?.type;
+  if (!type || ["healing", "temphp"].includes(type)) return;
+  const targets = message?.system?.targets ?? [];
+  if (!targets.length) return;
+  const props = new Set(roll.options?.properties ?? []);
+  const typeLabel = CONFIG.DND5E?.damageTypes?.[type]?.label ?? type;
+  const total = roll.total ?? 0;
+  const lines = [];
+  for (const tg of targets) {
+    const actor = targetActor(tg);
+    const traits = actor?.system?.traits;
+    if (!traits) continue;
+    const has = k => {
+      const tr = traits[k];
+      const values = new Set(tr?.value ?? []);
+      if (!values.has(type)) return false;
+      const bypass = [...(tr?.bypasses ?? [])].some(b => props.has(b));
+      return !bypass;
+    };
+    const source = k => {
+      const names = [];
+      for (const e of actor.appliedEffects ?? []) {
+        if ((e.changes ?? []).some(c => c.key === `system.traits.${k}.value` && String(c.value).split(/[,\s]+/).includes(type))) names.push(e.name);
+      }
+      return names.length ? names.join(", ") : actor.name;
+    };
+    let amount = total;
+    const parts = [];
+    if (has("di")) { amount = 0; parts.push(game.i18n.format("ROLLLESSONS.panel.immune", { type: typeLabel, source: source("di") })); }
+    else {
+      if (has("dr")) { amount = Math.floor(amount / 2); parts.push(game.i18n.format("ROLLLESSONS.panel.resist", { type: typeLabel, source: source("dr") })); }
+      if (has("dv")) { amount = amount * 2; parts.push(game.i18n.format("ROLLLESSONS.panel.vulnerable", { type: typeLabel, source: source("dv") })); }
+    }
+    if (!parts.length) continue;
+    lines.push(`${tg.name}: ${parts.join(" ")} ${game.i18n.format("ROLLLESSONS.panel.takes", { amount })}`);
+  }
+  if (!lines.length) return;
+  const d = RuleBook.describe("defenses", {});
+  if (cfg.detail === "beginner" && d?.text) lines.push(d.text);
+  body.append(note(t("panel.defenses"), lines));
+}
+
 /** Builds the panel body. Called only when the panel is opened. */
-function buildBody(roll, L) {
+function buildBody(roll, L, message) {
   const beginner = cfg.detail === "beginner";
   const isD20 = isD20Kind(L.k);
   const opts = roll.options ?? {};
@@ -121,7 +245,10 @@ function buildBody(roll, L) {
   const critDamage = L.k === "damage" && (roll.isCritical || opts.isCritical);
   if (!critDamage) {
     const diff = flatTotal(roll) - sum;
-    if (diff !== 0) body.append(row(signed(diff), t("panel.unknownSource"), "", true));
+    if (diff !== 0) {
+      const d = RuleBook.describe("addedAfterBuild", ctx);
+      body.append(row(signed(diff), d?.title ?? t("panel.unknownSource"), beginner ? d?.text : "", false));
+    }
   }
 
   const traits = [];
@@ -162,7 +289,11 @@ function buildBody(roll, L) {
     if (d) body.append(note(d.title, [d.text]));
   }
 
-  if (typeof opts.target === "number") {
+  let outcomeShown = false;
+  if (["save", "concentration", "death", "check", "skill", "tool"].includes(L.k)) outcomeShown = saveNotes(message, roll, body);
+  if (L.k === "attack") outcomeShown = attackNotes(message, roll, body);
+  if (L.k === "damage") defenseNotes(message, roll, body);
+  if (!outcomeShown && typeof opts.target === "number" && L.k !== "attack") {
     const d = RuleBook.describe("target", { ...ctx, target: opts.target });
     body.append(note(t("panel.target"), [d?.text || String(opts.target)]));
   }
@@ -175,33 +306,55 @@ function buildBody(roll, L) {
 }
 
 /** Lightweight shell: a closed <details> with a summary. The body is built on first open. */
-function shell(roll, L, index) {
+function shell(roll, L, index, message) {
   const panel = el("details", "roll-lessons");
   panel.dataset.roll = String(index);
   panel.append(el("summary", "", t("panel.summary")));
   const fill = () => {
     if (panel.dataset.built) return;
     panel.dataset.built = "1";
-    try { panel.append(buildBody(roll, L)); } catch (err) { console.error(`${MODULE_ID} | render failed`, err); }
+    try { panel.append(buildBody(roll, L, message)); } catch (err) { console.error(`${MODULE_ID} | render failed`, err); }
   };
   if (cfg.expanded) { fill(); panel.open = true; }
   else panel.addEventListener("toggle", fill, { once: true });
   return panel;
 }
 
+function visible(message) {
+  return message?.isContentVisible !== false;
+}
+
+/** Saves and other results that dnd5e folds into the spell or ability card as summary lines. */
+function injectSummaries(html) {
+  for (const line of html.querySelectorAll(".card-summary[data-message-id]")) {
+    if (line.nextElementSibling?.classList?.contains("roll-lessons")) continue;
+    const linked = game.messages?.get(line.dataset.messageId);
+    if (!linked || !visible(linked)) continue;
+    linked.rolls?.forEach((roll, i) => {
+      const L = roll.options?.rollLessons;
+      if (L?.v !== 2) return;
+      const panel = shell(roll, L, i, linked);
+      panel.classList.add("rl-summary");
+      line.after(panel);
+    });
+  }
+}
+
 export function injectPanels(message, html) {
-  if (!cfg.enabled || !message.isRoll) return;
+  if (!cfg.enabled) return;
   if (cfg.visibility === "gm" && !game.user.isGM) return;
-  if (!message.isContentVisible) return;
+  if (!visible(message)) return;
+  try { injectSummaries(html); } catch (err) { console.error(`${MODULE_ID} | summary panels failed`, err); }
+  if (!message.isRoll) return;
   const rolls = message.rolls;
   if (!rolls?.some(r => r.options?.rollLessons?.v === 2)) return;
-  if (html.querySelector(".roll-lessons")) return;
+  if (html.querySelector(".roll-lessons:not(.rl-summary)")) return;
 
   const anchors = html.querySelectorAll(".dice-roll");
   rolls.forEach((roll, i) => {
     const L = roll.options?.rollLessons;
     if (L?.v !== 2) return;
-    const panel = shell(roll, L, i);
+    const panel = shell(roll, L, i, message);
     const anchor = anchors[i];
     if (anchor) { anchor.after(panel); anchor.parentElement?.classList.add("rl-host"); }
     else (html.querySelector(".message-content") ?? html).append(panel);

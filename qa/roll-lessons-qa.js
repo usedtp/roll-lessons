@@ -43,7 +43,7 @@
     if (panel.total !== panel.roll.total) issues.push(`panel total ${panel.total} != roll total ${panel.roll.total}`);
     if (sum !== panel.roll.total) issues.push(`rows add to ${sum}, roll total ${panel.roll.total}`);
     for (const r of panel.rows) {
-      if (r.unknown || /Source not found|Unnamed effect|Not identified/.test(r.label) || /^[a-z]+(\.[a-z]+)+$/.test(r.label)) {
+      if (r.unknown || /Source not found|Unnamed effect|Not identified|Not from a Player's Handbook rule|Added after the roll/.test(r.label) || /^[a-z]+(\.[a-z]+)+$/.test(r.label)) {
         issues.push(`unexplained row: ${r.label}`);
       }
       if (r.v === "+0" && !/modifier|Proficiency/i.test(r.label)) issues.push(`zero row: ${r.label}`);
@@ -144,6 +144,16 @@
     [...(dlg?.element.querySelectorAll("button") ?? [])].find(b => /normal/i.test(b.textContent))?.click();
     return pr;
   }, p => need(has(p, /Situational bonus: 1d4 \+ 1 rolled .*\+1/), "situational +1 not shown"), { actorDoc: TH });
+
+  // Real damage dialog: this world rebuilds damage configs with numbers in place of @references
+  await test("Damage dialog: Halberd keeps Rage and Strength labels", async () => {
+    const pr = activity(T, "Halberd", "attack").rollDamage({}, {}, M);
+    await new Promise(r => setTimeout(r, 700));
+    const dlg = [...foundry.applications.instances.values()].find(a => a.constructor.name.includes("RollConfigurationDialog"));
+    [...(dlg?.element.querySelectorAll("button") ?? [])].find(b => /normal/i.test(b.textContent))?.click();
+    return pr;
+  }, p => [...need(has(p, /Damage bonus: Rage/), "Rage not named"), ...need(has(p, /Strength modifier/), "Strength modifier not named"),
+    ...need(!p.rows.some(r => /\.hp\.|\.ac\./.test(r.label)), "matched an HP or AC effect")], { actorDoc: T, type: "damage" });
 
   // Privacy
   await test("Hidden roll shows no panel", () => TH.rollAbilityCheck({ ability: "str" }, D, M), () => [], { actorDoc: TH, visible: false });

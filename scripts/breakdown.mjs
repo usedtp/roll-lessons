@@ -1,9 +1,12 @@
 import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
+import { expectedSources, findCombination } from "./phb.mjs";
 
 /*
  * Stored format (roll.options.rollLessons), kept small because it is saved in every chat message:
- * { v: 2, k: kind, c: { a, s, m, p, l, cr }, i: [[ruleKey|null, value|formula, extra?], ...], r?: { a, d, o } }
+ * { v: 2, k: kind, c: { a, s, m, p, l, cr, id }, i: [[ruleKey|null, value|formula, extra?, how?], ...], r?: { a, d, o }, pp?: parts }
+ * how: l = dnd5e label, r = known bonus field, a = Automated Conditions 5e, v = rule value match,
+ *      c = combination of rule sources, s = sheet or effect search, x = unmatched
  * Rule text is not stored. It is looked up at render time.
  */
 
@@ -202,7 +205,7 @@ function ruleBonusSources(x, kind, data) {
 function effectsWithValue(actor, n) {
   const names = [];
   for (const e of actor?.appliedEffects ?? []) {
-    if ((e.changes ?? []).some(ch => !String(ch.key).endsWith(".mode") && String(ch.key).toLowerCase().includes("damage") && Number(ch.value) === n)) {
+    if ((e.changes ?? []).some(ch => !String(ch.key).endsWith(".mode") && !/\.hp\.|\.ac\./i.test(String(ch.key)) && String(ch.key).toLowerCase().includes("damage") && Number(ch.value) === n)) {
       names.push(sourceName(e, actor));
     }
   }
@@ -210,7 +213,7 @@ function effectsWithValue(actor, n) {
 }
 
 /** Search every known place a loose number can come from. Runs only for unlabelled numbers. */
-function findSource(whole, x, config) {
+function findSource(whole, x, config, kind) {
   const sub = config?.subject;
   // 1. A damage part on the activity itself.
   const owner = x.item?.name ?? sub?.name;
@@ -243,7 +246,9 @@ function findSource(whole, x, config) {
   for (const e of effects) {
     const ch = (e.changes ?? []).find(c => {
       const k = String(c.key ?? "");
-      return !k.endsWith(".mode") && /bonus|damage/i.test(k) && String(c.value).trim().replace(/^\+\s*/, "") === whole;
+      if (k.endsWith(".mode") || /\.hp\.|\.ac\./i.test(k)) return false;
+      const fits = kind === "damage" ? /damage/i.test(k) : kind === "attack" ? /attack|\.(mwak|rwak|msak|rsak)\./i.test(k) : /bonus/i.test(k);
+      return fits && String(c.value).trim().replace(/^\+\s*/, "") === whole;
     });
     if (ch) return ["effectValue", `${sourceName(e, x.actor)} (${ch.key})`];
   }
@@ -258,7 +263,7 @@ function itemsFor(part, rc, x, kind, state) {
   const match = state.raw.find(s => s.raw === whole.replace(/^\+\s*/, ""));
   if (match) {
     const key = RuleBook.pick([match.key, "flatBonus"]);
-    return [match.src ? [key, resolve(whole, rc?.data), match.src] : [key, resolve(whole, rc?.data)]];
+    return [[key, resolve(whole, rc?.data), match.src || undefined, "r"]];
   }
 
   const terms = splitTerms(whole);
@@ -292,19 +297,16 @@ function itemsFor(part, rc, x, kind, state) {
       keys = value === x.c.m ? ["formulaFlat.mod", "formulaFlat"] : ["formulaFlat"];
       extra = whole;
     } else {
-      const found = findSource(terms.length === 1 ? whole : term, x, state.config);
-      const names = !found && typeof value === "number" ? effectsWithValue(x.actor, value) : "";
-      if (found) { keys = [found[0]]; extra = found[1]; }
-      else if (names) { keys = ["flatBonus.possible"]; extra = names; }
-      else { keys = ["flatBonus"]; extra = whole; }
+      // Resolved after all parts are read: see resolveLoose.
+      items.push(["__loose", value, terms.length === 1 ? whole : term]);
+      continue;
     }
 
     if (path?.[0] === "ruleBonus") extra = ruleBonusSources(x, kind, rc?.data ?? {}) || undefined;
     if (path?.[0] === "scale") extra = scaleLabel(term, x.actor);
     const key = RuleBook.pick(keys);
-    if (!key) items.push([null, value, term]);
-    else if (extra) items.push([key, value, extra]);
-    else items.push([key, value]);
+    if (!key) items.push(["__loose", value, term]);
+    else items.push([key, value, extra || undefined, "l"]);
   }
   return items;
 }
@@ -414,19 +416,121 @@ function collectReasons(x, kind, mode) {
 
 /* ---------- Entry points ---------- */
 
+/**
+ * Some flows rebuild a roll config with its @references already turned into numbers
+ * (seen with the damage dialog in this world). Put the labelled part back wherever it
+ * still produces the same value, so every number keeps its source.
+ */
+export function restoreParts(labelled, parts, data) {
+  if (!labelled?.length || !parts?.length) return parts;
+  return parts.map((p, i) => {
+    const original = labelled[i];
+    if (original === undefined || original === p || !String(original).includes("@")) return p;
+    const a = resolve(String(original).trim(), data);
+    const b = resolve(String(p).replace(/^\+\s*/, "").trim(), data);
+    return a === b ? original : p;
+  });
+}
+
 /** Modifier items. Called when each roll config is final (dnd5e.postBuildRollConfig). */
 export function buildLessons(config, rc, kind) {
   const x = context(config, rc);
   const lessons = { v: 2, k: kind, c: x.c, i: [] };
   const state = { raw: rawSources(config, rc, x, kind), config };
   for (const p of rc?.parts ?? []) if (p) lessons.i.push(...itemsFor(p, rc, x, kind, state));
+  resolveLoose(lessons, state, rc, x, kind, config);
   // A +0 row teaches nothing, except for an ability modifier or proficiency.
   lessons.i = lessons.i.filter(([key, value]) => value !== 0 || /^(mod|prof)/.test(key ?? ""));
+  noProfRow(lessons, x, kind);
+  lessons.pp = (rc?.parts ?? []).map(String);
   if (kind === "damage") rageCheck(config, rc, x, lessons);
   if (cfg.debug) {
     console.log(`${MODULE_ID} | breakdown`, { kind, hookNames: config?.hookNames, parts: rc?.parts, data: rc?.data, lessons });
   }
   return lessons;
+}
+
+/** Labels Automated Conditions 5e lists as bonuses in its chat tooltip. */
+function ac5eLabels(record) {
+  const html = String(record?.chatTooltip ?? "");
+  const text = html.replace(/<[^>]+>/g, "\n");
+  const names = [];
+  for (const line of text.split("\n")) {
+    const m = line.match(/^\s*(?:Bonus|Target Grants Bonus|Target grants bonus)\s*:\s*(.+)$/i);
+    if (m) names.push(...m[1].split(",").map(s => s.trim()).filter(Boolean));
+  }
+  return names.join(", ");
+}
+
+/**
+ * Account for every number dnd5e passed without a label, in this order:
+ * Automated Conditions 5e's record, one rule source, a combination of rule sources,
+ * then every bonus setting and effect on the character and item.
+ */
+function resolveLoose(lessons, state, rc, x, kind, config) {
+  const ac5e = rc?.options?.["automated-conditions-5e"];
+  const applied = (ac5e?.appliedParts ?? []).map(p => String(p).trim().replace(/^\+\s*/, ""));
+  const sources = expectedSources({ config, rc, x, kind, effectNames });
+  const used = new Set();
+  // Sources already shown with a dnd5e label are not available again.
+  for (const [key, value, , how] of lessons.i) {
+    if (how !== "l" && how !== "r") continue;
+    const i = sources.findIndex((s, j) => !used.has(j) && s.v === value && (s.key === key || s.key.split(".")[0] === String(key).split(".")[0]));
+    if (i >= 0) used.add(i);
+  }
+  const out = [];
+  for (const item of lessons.i) {
+    if (item[0] !== "__loose") { out.push(item); continue; }
+    const [, value, text] = item;
+    const plain = String(text).trim().replace(/^\+\s*/, "");
+    if (applied.includes(plain)) { out.push(["ac5eBonus", value, ac5eLabels(ac5e) || undefined, "a"]); continue; }
+    if (typeof value === "number") {
+      const one = sources.findIndex((s, j) => !used.has(j) && s.v === value);
+      if (one >= 0) {
+        used.add(one);
+        const s = sources[one];
+        out.push([RuleBook.pick([s.key, s.key.split(".")[0]]) ?? s.key, value, s.extra || undefined, "v"]);
+        continue;
+      }
+      const combo = findCombination(sources, value, used);
+      if (combo) {
+        for (const j of combo) {
+          used.add(j);
+          const s = sources[j];
+          out.push([RuleBook.pick([s.key, s.key.split(".")[0]]) ?? s.key, s.v, s.extra || undefined, "c"]);
+        }
+        continue;
+      }
+    }
+    const found = findSource(plain, x, config, kind);
+    if (found) { out.push([found[0], value, found[1], "s"]); continue; }
+    const names = typeof value === "number" ? effectsWithValue(x.actor, value) : "";
+    if (names) { out.push(["flatBonus.possible", value, names, "s"]); continue; }
+    out.push(["notFromRules", value, plain, "x"]);
+  }
+  lessons.i = out;
+}
+
+/** "+0, not proficient" row for saves and checks, naming the proficiencies the creature does have. */
+function noProfRow(lessons, x, kind) {
+  if (!["save", "check", "skill", "tool", "concentration"].includes(kind)) return;
+  if (lessons.i.some(([k]) => /^prof/.test(k ?? ""))) return;
+  const sys = x.actor?.system;
+  if (!sys) return;
+  const label = id => CONFIG.DND5E?.abilities?.[id]?.label ?? id;
+  let extra;
+  if (kind === "save" || kind === "concentration") {
+    const have = Object.entries(sys.abilities ?? {}).filter(([, a]) => (a.save?.prof?.multiplier ?? a.proficient ?? 0) >= 1).map(([id]) => label(id));
+    const cls = x.actor.items?.find(i => i.type === "class")?.name;
+    extra = have.length ? `proficient in ${have.join(" and ")} saves${cls ? ` (${cls})` : ""}` : "no saving throw proficiencies";
+  } else if (kind === "skill") {
+    extra = `not proficient in ${CONFIG.DND5E?.skills?.[x.skill]?.label ?? x.skill}`;
+  } else if (kind === "tool") {
+    extra = "not proficient with this tool";
+  } else {
+    extra = "plain ability checks add no proficiency";
+  }
+  lessons.i.push(["prof.none", 0, extra, "l"]);
 }
 
 /**

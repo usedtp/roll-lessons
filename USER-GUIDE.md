@@ -11,7 +11,7 @@ Requirements: Foundry VTT v14, dnd5e system 6.0.0 or newer (built against 6.0.6)
    - macOS: `~/Library/Application Support/FoundryVTT`
    - Linux: `/home/$USER/.local/share/FoundryVTT`
 2. Close Foundry completely.
-3. Unzip `roll-lessons.zip` into `{User Data}/Data/modules/`. The result must be `Data/modules/roll-lessons/module.json`. If unzipping creates `roll-lessons/roll-lessons/`, move the inner folder up one level.
+3. Create the folder `{User Data}/Data/modules/roll-lessons/` and unzip `module.zip` into it. The result must be `Data/modules/roll-lessons/module.json`.
 4. Start Foundry. Roll Lessons now appears on the Add-on Modules tab of the setup screen.
 5. Launch your world as GM. Open Game Settings, Manage Modules, tick Roll Lessons, Save Module Settings. Foundry reloads the world.
 6. Make a roll. A "How this total was built" header appears under it.
@@ -21,6 +21,14 @@ If Foundry runs on a hosting service instead of your computer, upload the `roll-
 ## Rules source
 
 Rule text follows the 2024 Player's Handbook. Where dnd5e's automation differs from the book (for example, Magic Missile rolls one dart), the panel says so.
+
+## Install from GitHub
+
+In Foundry's setup screen: Add-on Modules, Install Module, paste this Manifest URL and click Install:
+
+`https://github.com/usedtp/roll-lessons/releases/latest/download/module.json`
+
+Foundry then offers updates whenever a new release is published.
 
 ## Settings
 
@@ -34,6 +42,7 @@ Open Game Settings, Configure Settings, Roll Lessons.
 | Open breakdowns by default | Each user | Off | Expands each panel automatically. |
 | Custom rule text (JSON) | World | Empty | Overrides wording. Applies on save, also to old messages. |
 | Debug logging | Each user | Off | Writes roll details to the browser console. |
+| Roll log | World, GM only | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one file per day, written by the GM's browser every 30 seconds. |
 
 ## Reading a panel
 
@@ -88,7 +97,17 @@ Placeholders you can use in text: `{ability}`, `{cr}`, `{score}`, `{mod}`, `{pro
 
 The module does no work between rolls. It runs once when a roll is configured and once when a chat card is drawn. Panel contents are built only when opened. Turn Debug logging off when you are not reporting a problem.
 
+## What each panel explains
+
+- Every number in the total, with its rule and source: ability modifier, proficiency (or "No proficiency" with the proficiencies the creature does have), Expertise, Rage, magic bonuses, item and feature bonuses, effects, and bonuses added by Automated Conditions 5e.
+- Numbers dnd5e passes without a label are matched to the 2024 Player's Handbook sources for that roll type, including two sources merged into one number (for example Strength +4 and Rage +2 shown as 6).
+- Attacks: Hit or Miss against each target's Armor Class.
+- Saves against a spell or ability: how the DC is built (8 + spellcasting modifier + Proficiency Bonus), Succeeded or Failed, and what the spell says happens. This also appears on the one-line save results inside spell cards.
+- Damage: each target's Resistance, Immunity or Vulnerability to the damage type, its source, and the damage taken.
+
 ## QA test
+
+`qa/roll-lessons-bench.js` is the full bench. It creates a "Roll Lessons QA" actor folder, QA NPCs and a "Roll Lessons QA" scene (once), rolls every weapon and spell from your compendiums against QA targets, checks each breakdown against the Player's Handbook, and deletes its whispered test messages at the end.
 
 `qa/roll-lessons-qa.js` tests every roll type with this world's characters. It is read-only: nothing is posted to chat and no character data changes. To run it, log in as a GM, press F12, open the Console, paste the whole file and press Enter. It prints a pass, fail and skip count with details for each test.
 

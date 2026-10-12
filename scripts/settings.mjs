@@ -6,7 +6,8 @@ export const cfg = {
   visibility: "all",
   detail: "beginner",
   expanded: false,
-  debug: false
+  debug: false,
+  rollLog: true
 };
 
 export function registerSettings(onRulesChange) {
@@ -32,6 +33,7 @@ export function registerSettings(onRulesChange) {
   reg("expanded", { scope: "client", type: Boolean, default: false });
   reg("customRules", { scope: "world", type: String, default: "", onChange: () => onRulesChange?.() });
   reg("debug", { scope: "client", type: Boolean, default: false });
+  reg("rollLog", { scope: "world", type: Boolean, default: true, restricted: true });
 }
 
 /** Read all cached values. Called once settings storage is fully loaded. */

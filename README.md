@@ -23,9 +23,14 @@ Open **Add-on Modules** and click **Update** next to Roll Lessons.
 
 - The d20 that counted, plus any die dropped by advantage or disadvantage, and why.
 - Every modifier with its value, name, and rule text: ability modifier, proficiency, Expertise, magic bonus, cover, conditions, situational bonuses.
-- Damage dice and flat bonuses, with the source of each loose number.
+- Damage dice and flat bonuses, with the source of every number. Numbers dnd5e passes without a label are matched to the 2024 Player's Handbook sources for that roll, including two sources merged into one number (Strength +4 and Rage +2 shown as 6).
+- "No proficiency" rows that name the proficiencies the creature does have.
+- Bonuses added by Automated Conditions 5e, named by the effect that granted them.
+- Attacks: Hit or Miss against each target's Armor Class.
+- Saves against a spell or ability: how the DC is built (8 + spellcasting modifier + Proficiency Bonus), Succeeded or Failed, and what the spell says happens. Also shown on the save results folded into spell cards.
+- Damage: each target's Resistance, Immunity or Vulnerability, its source, and the damage taken.
 - Active traits such as Halfling Lucky, Elven Accuracy and Reliable Talent.
-- Natural 1 and critical hit rules, and the target number (DC or AC).
+- Natural 1 and critical hit rules.
 
 Covers attacks, damage, healing, ability checks, skill checks, tool checks, saving throws, initiative, concentration, death saves and hit dice. Works for player characters, NPCs and monsters.
 
@@ -41,6 +46,7 @@ Open **Game Settings**, **Configure Settings**, **Roll Lessons**.
 | Open breakdowns by default | Off | Expands each panel automatically |
 | Custom rule text (JSON) | Empty | Overrides the wording of any rule |
 | Debug logging | Off | Writes roll details to the browser console |
+| Roll log (GM) | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one file per day |
 
 Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 
@@ -49,8 +55,9 @@ Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 - Rule text follows the 2024 Player's Handbook.
 - Only rolls made after the module is enabled get a panel.
 - Rolls typed in chat (`/roll 1d20+5`) are not dnd5e rolls and get no panel.
-- Status: checked against the dnd5e 6.0.6 source and tested with mocks. Not yet run in a live Foundry world.
+- Tested live with Foundry 14.369 and dnd5e 6.0.6. `qa/roll-lessons-bench.js` rolls every weapon and spell in your compendiums and checks each breakdown.
+- Changes per version: [CHANGELOG.md](CHANGELOG.md).
 
 ## Report a problem
 
-Open an issue on this repo. Include your Foundry and dnd5e versions. Turn on **Debug logging**, make the roll that is wrong, and copy the `roll-lessons | breakdown` line from the browser console (F12).
+Open an issue on this repo with your Foundry and dnd5e versions and the day's file from `Data/roll-lessons-logs/` (the Roll log records every roll's breakdown).
