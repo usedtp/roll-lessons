@@ -47,6 +47,7 @@ Open **Game Settings**, **Configure Settings**, **Roll Lessons**.
 | Custom rule text (JSON) | Empty | Overrides the wording of any rule |
 | Debug logging | Off | Writes roll details to the browser console |
 | Roll log (GM) | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one file per day |
+| Hide damage that can only be 0 | On | Hides damage rolls that can only total 0, such as True Strike's extra damage below level 5 |
 
 Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 

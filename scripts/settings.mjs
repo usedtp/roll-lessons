@@ -7,7 +7,8 @@ export const cfg = {
   detail: "beginner",
   expanded: false,
   debug: false,
-  rollLog: true
+  rollLog: true,
+  hideZeroDamage: true
 };
 
 export function registerSettings(onRulesChange) {
@@ -34,6 +35,7 @@ export function registerSettings(onRulesChange) {
   reg("customRules", { scope: "world", type: String, default: "", onChange: () => onRulesChange?.() });
   reg("debug", { scope: "client", type: Boolean, default: false });
   reg("rollLog", { scope: "world", type: Boolean, default: true, restricted: true });
+  reg("hideZeroDamage", { scope: "world", type: Boolean, default: true });
 }
 
 /** Read all cached values. Called once settings storage is fully loaded. */

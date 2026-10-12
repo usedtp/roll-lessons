@@ -1,7 +1,7 @@
 import { MODULE_ID, cfg, registerSettings, refreshSettings } from "./settings.mjs";
 import { RuleBook } from "./rules.mjs";
-import { buildLessons, addReasons, kindFromHookNames, restoreParts } from "./breakdown.mjs";
-import { injectPanels } from "./render.mjs";
+import { buildLessons, addReasons, kindFromHookNames, restoreParts, repairParts } from "./breakdown.mjs";
+import { injectPanels, onRulesLoaded } from "./render.mjs";
 import { logMessage, flushLog, LOG_DIR } from "./log.mjs";
 
 Hooks.once("init", () => {
@@ -11,18 +11,21 @@ Hooks.once("init", () => {
   Hooks.on("dnd5e.preConfigureInitiative", onPreConfigureInitiative);
   Hooks.on("dnd5e.renderChatMessage", injectPanels);
   Hooks.on("createChatMessage", logMessage);
+  Hooks.on(`${MODULE_ID}.rulesLoaded`, onRulesLoaded);
   game.modules.get(MODULE_ID).api = { flushLog, LOG_DIR };
 });
 
-Hooks.once("setup", refreshSettings);
+// Start loading rule text as early as settings allow; panels wait for it (RuleBook.ready).
+Hooks.once("setup", () => {
+  refreshSettings();
+  RuleBook.load();
+});
 
 Hooks.once("ready", () => {
   if (game.system.id !== "dnd5e") {
     cfg.enabled = false;
     ui.notifications.warn(game.i18n.localize("ROLLLESSONS.warn.system"));
-    return;
   }
-  RuleBook.load();
 });
 
 /** Labelled roll parts per roll process, so rebuilt configs keep their sources. Garbage collected with the process. */
@@ -45,7 +48,8 @@ function onPostBuildRollConfig(process, rc, index = 0) {
     // Remember the labelled parts from the first build of this roll, keyed by the process config.
     let byIndex = labelledParts.get(process);
     if (!byIndex) labelledParts.set(process, (byIndex = new Map()));
-    const parts = rc.parts ?? [];
+    // Rejoin parts another module split inside brackets (Automated Conditions 5e splits on every "+").
+    const parts = repairParts(rc.parts ?? []);
     if (parts.some(p => String(p).includes("@"))) byIndex.set(index, [...parts]);
     const effective = { ...rc, parts: restoreParts(byIndex.get(index), parts, rc.data) };
     rc.options ??= {};

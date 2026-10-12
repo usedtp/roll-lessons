@@ -101,3 +101,6 @@
 .roll-lessons .rl-total .rl-value {
   font-size: 1.1em;
 }
+
+/* 1.4.0: damage lines that can only total 0 (no dice, no bonus) */
+.rl-hidden-zero { display: none; }

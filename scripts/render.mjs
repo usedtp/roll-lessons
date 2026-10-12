@@ -1,9 +1,22 @@
 import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { isD20Kind } from "./breakdown.mjs";
+import { logIssue } from "./log.mjs";
 
 const t = key => game.i18n.localize(`ROLLLESSONS.${key}`);
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
+
+/**
+ * Label and explanation for a row whose rule text is missing, instead of a bare "Not identified".
+ * The cause is shown in the panel and recorded in the roll log.
+ */
+function missingRule(key, extra, message, kind) {
+  const loaded = RuleBook.status.state === "ok";
+  const reason = !loaded ? game.i18n.format("ROLLLESSONS.panel.rulesNotLoaded", { state: RuleBook.status.state, error: RuleBook.status.error ?? "" })
+    : key ? game.i18n.format("ROLLLESSONS.panel.noRuleText", { key }) : t("panel.noKey");
+  logIssue({ message: message?.id, kind, key, extra, reason, rules: { ...RuleBook.status } });
+  return { label: extra ? `${extra}` : t("panel.unknown"), text: reason };
+}
 
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -214,7 +227,11 @@ function buildBody(roll, L, message) {
     if (key && RuleBook.data[key]?.showPart && extra) text = [text, `${t("panel.fromPart")}: ${extra}`].filter(Boolean).join(" ");
     if (typeof value === "number") {
       sum += value;
-      body.append(row(signed(value), d?.title ?? extra ?? t("panel.unknown"), text, !d));
+      if (d) body.append(row(signed(value), d.title, text, false));
+      else {
+        const m = missingRule(key, extra, message, L.k);
+        body.append(row(signed(value), m.label, m.text, true));
+      }
     } else {
       // Dice item: match it to the dice that were rolled for it.
       const formula = String(value).replace(/^-/, "");
@@ -234,11 +251,21 @@ function buildBody(roll, L, message) {
       const faces = used.map(x => (x.results ?? []).filter(r => r.active !== false).map(r => r.result).join(", ")).join("; ");
       const actual = used.map(x => `${x.number}d${x.faces}`).join(" + ");
       const asWritten = (formula.match(/\d*d\d+/gi) ?? []).map(s => (/^d/i.test(s) ? `1${s}` : s)).join(" + ");
-      const doubled = actual && actual !== asWritten ? ` (${t("panel.critDoubled")} ${actual})` : "";
+      // Level-scaled dice (cantrips) show the dice actually rolled, not the formula behind them.
+      const actualOnly = key && RuleBook.data[key]?.showActualDice && actual;
+      const crit = roll.isCritical || opts.isCritical;
+      const doubled = actualOnly ? "" : (actual && actual !== asWritten ? ` (${t("panel.critDoubled")} ${actual})` : "");
+      const written = actualOnly ? `${actual}${crit ? ` (${t("panel.critIncluded")})` : ""}` : formula;
       const flatNote = flat ? `, ${signed(flat)}` : "";
+      let title = d?.title;
+      if (!d) {
+        const m = missingRule(key, extra, message, L.k);
+        title = t("panel.unknown");
+        text = m.text;
+      }
       const label = rolled === null
-        ? `${d?.title ?? t("panel.unknown")} (${formula})`
-        : `${d?.title ?? t("panel.unknown")}: ${formula}${doubled} ${t("panel.rolled")} ${faces}${flatNote}`;
+        ? `${title} (${written})`
+        : `${title}: ${written}${doubled} ${t("panel.rolled")} ${faces}${flatNote}`;
       body.append(row(shown, label, text, !d));
     }
   }
@@ -305,19 +332,72 @@ function buildBody(roll, L, message) {
   return body;
 }
 
-/** Lightweight shell: a closed <details> with a summary. The body is built on first open. */
+/** Body shown when the rule text could not be loaded in this browser. Reopening the panel retries. */
+function rulesFailedBody() {
+  const body = el("div", "rl-body rl-failed");
+  const s = RuleBook.status;
+  body.append(row("!", t("panel.rulesFailedTitle"), game.i18n.format("ROLLLESSONS.panel.rulesFailedText", { error: s.error ?? s.state, url: s.url ?? "" }), true));
+  return body;
+}
+
+/**
+ * Lightweight shell: a closed <details> with a summary. The body is built on first open, and only once
+ * the rule text is loaded (RuleBook.ready). A panel opened before that waits; if loading failed it shows
+ * why and retries on the next open or when the rules finish loading.
+ */
 function shell(roll, L, index, message) {
   const panel = el("details", "roll-lessons");
   panel.dataset.roll = String(index);
   panel.append(el("summary", "", t("panel.summary")));
-  const fill = () => {
-    if (panel.dataset.built) return;
+  const fill = async () => {
+    if (panel.dataset.built || panel.dataset.building) return;
+    panel.dataset.building = "1";
+    if (RuleBook.status.state === "failed") RuleBook.load();
+    await RuleBook.ready;
+    delete panel.dataset.building;
+    panel.querySelector(":scope > .rl-body")?.remove();
+    if (RuleBook.status.state !== "ok") {
+      panel.dataset.failed = "1";
+      panel.append(rulesFailedBody());
+      panel.addEventListener("toggle", () => { if (panel.open) fill(); }, { once: true });
+      return;
+    }
+    delete panel.dataset.failed;
     panel.dataset.built = "1";
     try { panel.append(buildBody(roll, L, message)); } catch (err) { console.error(`${MODULE_ID} | render failed`, err); }
   };
-  if (cfg.expanded) { fill(); panel.open = true; }
+  panel._rlFill = fill;
+  if (cfg.expanded) { panel.open = true; fill(); }
   else panel.addEventListener("toggle", fill, { once: true });
   return panel;
+}
+
+/** Rule text finished loading: rebuild any panel that showed the failure notice. */
+export function onRulesLoaded(status) {
+  if (status?.state !== "ok") return;
+  for (const panel of document.querySelectorAll(".roll-lessons[data-failed]")) panel._rlFill?.();
+}
+
+/**
+ * A damage roll that can only ever total 0: every die has a count of 0 and there is no flat number.
+ * Example: True Strike's extra Radiant dice, (floor((level + 1) / 6))d6, below character level 5.
+ */
+export function isEmptyRoll(roll) {
+  const isDamage = roll?.constructor?.name === "DamageRoll" || roll?.options?.rollLessons?.k === "damage";
+  if (!isDamage) return false;
+  const dice = roll.dice ?? [];
+  if (!dice.length || !dice.every(d => (d.number ?? 0) === 0)) return false;
+  const flat = (roll.terms ?? []).some(t => t.faces === undefined && typeof t.number === "number" && t.number !== 0);
+  return !flat && (roll.total ?? 0) === 0;
+}
+
+/** Hide the empty lines dnd5e draws for zero-dice damage rolls (no dice, value 0). */
+function hideEmptyParts(html) {
+  for (const part of html.querySelectorAll(".roll-breakdown .tooltip-part, .dice-tooltip .tooltip-part")) {
+    const noDice = !part.querySelector(".dice-rolls li");
+    const value = part.querySelector(".total .value")?.textContent?.trim();
+    if (noDice && value === "0") part.classList.add("rl-hidden-zero");
+  }
 }
 
 function visible(message) {
@@ -351,9 +431,11 @@ export function injectPanels(message, html) {
   if (html.querySelector(".roll-lessons:not(.rl-summary)")) return;
 
   const anchors = html.querySelectorAll(".dice-roll");
+  const empty = cfg.hideZeroDamage ? rolls.map(isEmptyRoll) : rolls.map(() => false);
+  if (empty.some(Boolean)) hideEmptyParts(html);
   rolls.forEach((roll, i) => {
     const L = roll.options?.rollLessons;
-    if (L?.v !== 2) return;
+    if (L?.v !== 2 || empty[i]) return;
     const panel = shell(roll, L, i, message);
     const anchor = anchors[i];
     if (anchor) { anchor.after(panel); anchor.parentElement?.classList.add("rl-host"); }

@@ -15,13 +15,25 @@ let dirReady = false;
 const isWriter = () => game.user?.isGM && (game.users?.activeGM?.id ?? game.user.id) === game.user.id;
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** Dice total with each die's sign: "1d20 + 3 - 1d4" counts the d4 as negative. */
+export function signedDiceTotal(roll) {
+  let sign = 1;
+  let sum = 0;
+  for (const term of roll?.terms ?? []) {
+    if (typeof term.operator === "string") { sign = term.operator === "-" ? -1 : 1; continue; }
+    if (term.faces !== undefined) sum += sign * (term.total ?? 0);
+    sign = 1;
+  }
+  return sum;
+}
+
 function summarize(message) {
   const entries = [];
   message.rolls?.forEach((roll, i) => {
     const L = roll.options?.rollLessons;
     if (L?.v !== 2) return;
     const numeric = L.i.filter(it => typeof it[1] === "number").reduce((a, it) => a + it[1], 0);
-    const dice = (roll.dice ?? []).reduce((a, d) => a + (d.total ?? 0), 0);
+    const dice = signedDiceTotal(roll);
     const items = L.i.map(([key, value, extra, how]) => ({ key, value, extra, how }));
     entries.push({
       t: new Date().toISOString(),
@@ -55,6 +67,30 @@ export function logMessage(message) {
   } catch (err) {
     console.error(`${MODULE_ID} | log entry failed`, err);
   }
+}
+
+const seenIssues = new Set();
+
+/**
+ * A panel row that could not be explained. Always written to the console; added to the roll log when this
+ * browser is the log writer (the active GM). One entry per message, key and reason.
+ */
+export function logIssue(issue) {
+  const id = `${issue.message}|${issue.key}|${issue.reason}`;
+  if (seenIssues.has(id)) return;
+  seenIssues.add(id);
+  const entry = {
+    t: new Date().toISOString(),
+    type: "panel-issue",
+    ...issue,
+    user: game.user?.name,
+    browser: navigator.userAgent,
+    versions: { foundry: game.version, dnd5e: game.system?.version, rollLessons: game.modules?.get(MODULE_ID)?.version }
+  };
+  console.warn(`${MODULE_ID} | panel issue`, entry);
+  if (!cfg.rollLog || !isWriter()) return;
+  queue.push(entry);
+  timer ??= setTimeout(flushLog, FLUSH_MS);
 }
 
 export async function flushLog() {

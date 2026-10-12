@@ -1,0 +1,9 @@
+{
+  "name": "roll-lessons",
+  "private": true,
+  "type": "module",
+  "description": "Foundry VTT module. package.json exists only to run the tests; it is not shipped in the release zip.",
+  "scripts": {
+    "test": "node tests/roll-lessons.test.mjs"
+  }
+}

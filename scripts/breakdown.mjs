@@ -112,6 +112,38 @@ function splitTerms(text) {
   return out;
 }
 
+/**
+ * Rejoin roll parts that were split inside brackets. Automated Conditions 5e rebuilds damage parts with
+ * formula.split("+"), which turns "(floor((@details.level + 1) / 6))d6" into two broken halves.
+ * Parts are merged back, joined with " + ", until their brackets balance. Balanced input is returned as is.
+ */
+export function repairParts(parts) {
+  if (!Array.isArray(parts) || parts.length < 2) return parts;
+  const delta = s => {
+    let d = 0;
+    for (const ch of String(s)) {
+      if ("([{".includes(ch)) d++;
+      else if (")]}".includes(ch)) d--;
+    }
+    return d;
+  };
+  if (parts.every(p => delta(p) === 0)) return parts;
+  const out = [];
+  let buf = null;
+  let depth = 0;
+  for (const p of parts) {
+    const text = String(p);
+    if (buf === null) { buf = text; depth = delta(text); }
+    else { buf += ` + ${text.replace(/^\+\s*/, "")}`; depth += delta(text); }
+    if (depth <= 0) { out.push(buf); buf = null; depth = 0; }
+  }
+  if (buf !== null) out.push(buf);
+  return out;
+}
+
+/** Dice whose count grows with character level, as cantrips do ("(floor((@details.level + 1) / 6))d6"). */
+const LEVEL_SCALED = /@details\.level|@classes\.[\w-]+\.levels/;
+
 /** "@scale.barbarian.rage-damage" -> "Barbarian: Rage Damage". */
 function scaleLabel(ref, actor) {
   const m = String(ref).match(/@scale\.([\w-]+)\.([\w-]+)/);
@@ -283,7 +315,12 @@ function itemsFor(part, rc, x, kind, state) {
       keys = healing ? [path[0]] : [`${path[0]}.${kind}`, path[0]];
     }
     else if (HAS_DICE.test(term)) {
-      if (kind === "damage") {
+      if (kind === "damage" && LEVEL_SCALED.test(term)) {
+        keys = ["cantripUpgrade", "dmgExtra", "dmgBase"];
+        extra = whole;
+        state.dice = true;
+      }
+      else if (kind === "damage") {
         const healing = ["healing", "temphp"].includes(rc?.options?.type);
         // dnd5e keeps the attack mode on the process config, not on each roll's options.
         const attackMode = rc?.options?.attackMode ?? state.config?.attackMode;
@@ -437,12 +474,13 @@ export function buildLessons(config, rc, kind) {
   const x = context(config, rc);
   const lessons = { v: 2, k: kind, c: x.c, i: [] };
   const state = { raw: rawSources(config, rc, x, kind), config };
-  for (const p of rc?.parts ?? []) if (p) lessons.i.push(...itemsFor(p, rc, x, kind, state));
+  const parts = repairParts(rc?.parts ?? []);
+  for (const p of parts) if (p) lessons.i.push(...itemsFor(p, rc, x, kind, state));
   resolveLoose(lessons, state, rc, x, kind, config);
   // A +0 row teaches nothing, except for an ability modifier or proficiency.
   lessons.i = lessons.i.filter(([key, value]) => value !== 0 || /^(mod|prof)/.test(key ?? ""));
   noProfRow(lessons, x, kind);
-  lessons.pp = (rc?.parts ?? []).map(String);
+  lessons.pp = parts.map(String);
   if (kind === "damage") rageCheck(config, rc, x, lessons);
   if (cfg.debug) {
     console.log(`${MODULE_ID} | breakdown`, { kind, hookNames: config?.hookNames, parts: rc?.parts, data: rc?.data, lessons });

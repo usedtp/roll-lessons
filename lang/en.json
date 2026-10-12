@@ -32,6 +32,10 @@
       "rollLog": {
         "name": "Roll log",
         "hint": "Record every roll's breakdown to Data/roll-lessons-logs/ (one file per day) so problems can be found and fixed later. Written by the GM's browser."
+      },
+      "hideZeroDamage": {
+        "name": "Hide damage that can only be 0",
+        "hint": "Hides damage rolls with no dice and no bonus, such as True Strike's extra Radiant damage below level 5, from chat cards and breakdowns. The roll is kept in the data."
       }
     },
     "panel": {
@@ -45,7 +49,7 @@
       "reasons": "Why",
       "traits": "Active traits",
       "target": "Target number",
-      "unknown": "Not identified",
+      "unknown": "Rule text missing",
       "noReason": "dnd5e did not report a reason. It may have been chosen in the roll dialog or with a held key.",
       "criticalHit": "Critical hit",
       "base": "Base",
@@ -67,7 +71,13 @@
       "resist": "Resistance to {type} ({source}): halved, rounded down.",
       "immune": "Immunity to {type} ({source}): no damage.",
       "vulnerable": "Vulnerability to {type} ({source}): doubled.",
-      "takes": "Takes {amount}."
+      "takes": "Takes {amount}.",
+      "rulesNotLoaded": "The rule text was not loaded in this browser when this panel was built (status: {state} {error}). Reopen the panel to retry.",
+      "noRuleText": "Roll Lessons has no rule text for \"{key}\". This is a Roll Lessons gap; it is recorded in the roll log.",
+      "noKey": "This part of the roll could not be matched to any source. It is recorded in the roll log.",
+      "rulesFailedTitle": "Rule text could not be loaded",
+      "rulesFailedText": "This browser could not load Roll Lessons' rule text ({error}) from {url}. Close and reopen this panel to retry. If it keeps failing, reload the page (F5).",
+      "critIncluded": "doubled by the critical hit"
     },
     "warn": {
       "system": "Roll Lessons only works with the dnd5e system.",

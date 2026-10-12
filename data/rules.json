@@ -269,5 +269,10 @@
   "defenses": {
     "title": "Resistance, Immunity and Vulnerability",
     "text": "Resistance halves damage of that type (round down). Vulnerability doubles it. Immunity means no damage of that type. These apply when the damage is applied to the target, not to the roll."
+  },
+  "cantripUpgrade": {
+    "title": "Cantrip Upgrade",
+    "showActualDice": true,
+    "text": "This cantrip's dice grow with character level: they increase at levels 5, 11 and 17. At level {level} the dice shown here are rolled."
   }
 }

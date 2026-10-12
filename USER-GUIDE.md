@@ -43,6 +43,7 @@ Open Game Settings, Configure Settings, Roll Lessons.
 | Custom rule text (JSON) | World | Empty | Overrides wording. Applies on save, also to old messages. |
 | Debug logging | Each user | Off | Writes roll details to the browser console. |
 | Roll log | World, GM only | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one file per day, written by the GM's browser every 30 seconds. |
+| Hide damage that can only be 0 | World | On | Hides damage rolls with no dice and no bonus (for example True Strike's extra Radiant damage below level 5) from chat cards and breakdowns. The roll is kept in the data. |
 
 ## Reading a panel
 
