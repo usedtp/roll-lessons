@@ -1,7 +1,7 @@
 # Roll Lessons 1.3.0
 
 ## Fixed
-- Damage rolled through the roll window no longer shows "Source not found". Rage and ability modifiers that the window turns into plain numbers keep their labels (Teddy's Halberd and Handaxe +4, Thogrum's Warhammer +3).
+- Damage rolled through the roll window no longer shows "Source not found". Rage and ability modifiers that the window turns into plain numbers keep their labels (player 1 's Halberd and Handaxe +4, Player 2's Warhammer +3).
 - A hit point setting (Tough) is no longer shown as a damage source.
 - Rows with no source are replaced by Player's Handbook matching: a plain number is matched to the sources the rules allow for that roll type, including two sources merged into one number.
 
