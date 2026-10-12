@@ -1,0 +1,245 @@
+{
+  "d20": {
+    "title": "d20 roll",
+    "text": "Roll one twenty-sided die and add every modifier listed below. Compare the total to the target number."
+  },
+  "advantage": {
+    "title": "Advantage",
+    "text": "Roll two d20 and use the higher. A roll can't be affected by more than one Advantage, and Advantage and Disadvantage on the same roll cancel each other."
+  },
+  "disadvantage": {
+    "title": "Disadvantage",
+    "text": "Roll two d20 and use the lower. A roll can't be affected by more than one Disadvantage, and Advantage and Disadvantage on the same roll cancel each other."
+  },
+  "mod": {
+    "title": "{ability} modifier",
+    "text": "The {ability} score of {score} gives a modifier of {mod}. The modifier is (score - 10) divided by 2, rounded down.",
+    "titleFallback": "Ability modifier"
+  },
+  "mod.attack": {
+    "title": "{ability} modifier",
+    "text": "Attack rolls add the ability modifier the weapon or spell uses. The {ability} modifier here is {mod}.",
+    "titleFallback": "Ability modifier"
+  },
+  "mod.damage": {
+    "title": "{ability} modifier",
+    "text": "Damage usually adds the same ability modifier as the attack roll. The {ability} modifier here is {mod}.",
+    "titleFallback": "Ability modifier"
+  },
+  "mod.initiative": {
+    "title": "{ability} modifier",
+    "text": "Initiative is a Dexterity check. The {ability} modifier here is {mod}.",
+    "titleFallback": "Ability modifier"
+  },
+  "prof": {
+    "title": "Proficiency bonus",
+    "text": "Proficient creatures add their proficiency bonus. At level {level} the bonus is {prof}. At challenge rating {cr} the bonus is {prof}."
+  },
+  "prof.proficient": {
+    "title": "Proficiency bonus",
+    "text": "This creature is proficient, so it adds its proficiency bonus once. At level {level} the bonus is {prof}. At challenge rating {cr} the bonus is {prof}."
+  },
+  "prof.expertise": {
+    "title": "Proficiency with Expertise",
+    "text": "Expertise doubles the proficiency bonus for ability checks with this skill. A proficiency bonus can be doubled only once. At level {level} the bonus is {prof}, doubled here. At challenge rating {cr} the bonus is {prof}, doubled here."
+  },
+  "prof.half": {
+    "title": "Half proficiency",
+    "text": "Jack of All Trades: you add half your proficiency bonus, rounded down, to an ability check that uses a skill proficiency you lack. At level {level} the bonus is {prof}. At challenge rating {cr} the bonus is {prof}."
+  },
+  "prof.attack": {
+    "title": "Proficiency bonus",
+    "text": "An attack roll adds the proficiency bonus when the attacker is proficient with the weapon or spell attack. At level {level} the bonus is {prof}. At challenge rating {cr} the bonus is {prof}."
+  },
+  "extraBonus": {
+    "title": "Extra bonus",
+    "text": "A bonus added by a feature, item or effect on your character."
+  },
+  "ruleBonus": {
+    "title": "Bonus",
+    "showSource": true,
+    "text": "A bonus granted by an active effect or rule on the character or item, such as Rage, Bless or a magic item."
+  },
+  "bonus": {
+    "title": "Bonus",
+    "text": "A bonus from a feature, effect or item that applies to this kind of roll."
+  },
+  "weaponMagic": {
+    "title": "Magic weapon bonus",
+    "text": "A magic weapon with a plus value adds it to the attack roll and to the damage roll."
+  },
+  "ammoMagic": {
+    "title": "Magic ammunition bonus",
+    "text": "Magic ammunition with a plus value adds it to the attack roll and to the damage roll."
+  },
+  "situational": {
+    "title": "Situational bonus",
+    "text": "A bonus or penalty entered by the player or GM for this roll only."
+  },
+  "toHit": {
+    "title": "To-hit bonus",
+    "text": "A bonus to hit set on the weapon, spell or activity."
+  },
+  "cover": {
+    "title": "Cover",
+    "text": "Half Cover gives +2 and Three-Quarters Cover gives +5 to AC and Dexterity saving throws, against attacks and effects from the other side of the cover. Only the best degree of cover counts."
+  },
+  "alert": {
+    "title": "Alert",
+    "text": "The Alert feat adds your proficiency bonus to your initiative roll."
+  },
+  "deathBonus": {
+    "title": "Death save bonus",
+    "text": "A bonus that applies to your death saving throws."
+  },
+  "concentrationBonus": {
+    "title": "Concentration bonus",
+    "text": "A bonus that applies to Constitution saves made to maintain concentration."
+  },
+  "reductions": {
+    "title": "Condition penalty ({status})",
+    "text": "The {status} condition reduces this roll."
+  },
+  "hitDie": {
+    "title": "Hit Die",
+    "text": "Spend a Hit Die to recover hit points. Roll the die and add your Constitution modifier. The result is at least 1 with the current rules."
+  },
+  "dmgBase": {
+    "title": "Weapon or spell damage dice",
+    "text": "The dice listed on the weapon, spell or feature. Roll them and add the modifiers below."
+  },
+  "dmgVersatile": {
+    "title": "Versatile damage dice (two-handed)",
+    "text": "A Versatile weapon uses its larger damage die when you attack with it in two hands."
+  },
+  "dmgExtra": {
+    "title": "Extra damage",
+    "text": "Additional damage dice from a feature, effect or a second damage part of the weapon or spell."
+  },
+  "magicalBonus": {
+    "title": "Magic weapon damage bonus",
+    "text": "A magic weapon with a plus value adds it to damage."
+  },
+  "ammoBonus": {
+    "title": "Magic ammunition damage bonus",
+    "text": "Magic ammunition with a plus value adds it to damage."
+  },
+  "tiebreaker": {
+    "title": "Initiative tiebreaker",
+    "text": "A tiny decimal added so two combatants never tie exactly on initiative."
+  },
+  "critical": {
+    "title": "Critical hit",
+    "text": "On a Critical Hit, roll the attack's damage dice twice and add them together, then add modifiers as normal. Extra damage dice, such as Sneak Attack, are also rolled twice."
+  },
+  "critical.powerful": {
+    "title": "Critical hit",
+    "text": "Powerful Critical is active, so the damage dice are maximized and then rolled again and added."
+  },
+  "critical.multiplyNumeric": {
+    "title": "Critical hit",
+    "text": "This table multiplies flat numbers as well as dice on a critical hit."
+  },
+  "criticalRange": {
+    "title": "Critical range",
+    "text": "A natural {threshold} or higher on the d20 is a critical hit. The default is a natural 20."
+  },
+  "halflingLucky": {
+    "title": "Luck (Halfling)",
+    "text": "When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll."
+  },
+  "elvenAccuracy": {
+    "title": "Elven Accuracy",
+    "text": "When you have advantage on a roll that uses Dexterity, Intelligence, Wisdom or Charisma, you roll a third d20 and keep the best. This feat is not in the 2024 Player's Handbook."
+  },
+  "reliableTalent": {
+    "title": "Reliable Talent",
+    "text": "When you make an ability check that uses one of your skill or tool proficiencies, a d20 roll of 9 or lower counts as a 10."
+  },
+  "minimum": {
+    "title": "Minimum die result",
+    "text": "A feature sets the lowest value a die can count as. Any lower result is raised to {minimum}."
+  },
+  "maximum": {
+    "title": "Maximum die result",
+    "text": "A feature sets the highest value a die can count as. Any higher result is lowered to {maximum}."
+  },
+  "target": {
+    "title": "Target number",
+    "text": "The roll succeeds if the total meets or beats {target}."
+  },
+  "diceBonus": {
+    "title": "Bonus die",
+    "text": "A feature adds this die to the roll, such as Bless or Guidance."
+  },
+  "flatBonus": {
+    "title": "Source not found",
+    "showPart": true,
+    "text": "Checked the character's bonus settings, the weapon's damage bonus, the activity's damage parts and every active effect on the character and the item. None hold this number, so another module or a manual edit added it. Turn on Debug logging and send the 'parts' line of this roll to name it."
+  },
+  "naturalOne": {
+    "title": "Natural 1",
+    "text": "A natural 1 on the d20 of an attack roll misses, regardless of modifiers or the target's AC."
+  },
+  "actorDamageBonus": {
+    "title": "Damage bonus",
+    "showSource": true,
+    "text": "A bonus the character adds to every damage roll of this attack type while the named effect is active. The value comes from the class feature shown, which increases at higher levels."
+  },
+  "itemDamageBonus": {
+    "title": "Item damage bonus",
+    "showSource": true,
+    "text": "A damage bonus set on this weapon or item."
+  },
+  "formulaFlat": {
+    "title": "Fixed number in the damage formula",
+    "showPart": true,
+    "text": "This number is typed into the weapon or activity's damage formula, so dnd5e adds it as a plain number with no named source."
+  },
+  "formulaFlat.mod": {
+    "title": "Fixed number in the damage formula (matches {ability} modifier)",
+    "showPart": true,
+    "text": "This number is typed into the weapon or activity's damage formula. It equals the {ability} modifier ({mod}), so it is almost certainly the modifier entered by hand instead of @mod. A hand-typed modifier will not update if the ability score changes. To fix it, edit the activity's damage formula and replace the number with @mod."
+  },
+  "activityPart": {
+    "title": "Activity damage part",
+    "showSource": true,
+    "text": "A separate damage line entered on this weapon's attack activity with a fixed value. Open the item, then the activity's Effect tab, to see or change it."
+  },
+  "actorBonusField": {
+    "title": "Character bonus",
+    "showSource": true,
+    "text": "A bonus stored on the character's sheet, set by the named effect or entered in the character's bonus settings."
+  },
+  "effectValue": {
+    "title": "Effect",
+    "showSource": true,
+    "text": "An active effect writes exactly this value. The text in brackets is the setting it changes."
+  },
+  "flatBonus.possible": {
+    "title": "Bonus from {source}",
+    "text": "No setting holds this number as text, but this active effect changes damage by exactly this amount."
+  },
+  "damageLineBonus": {
+    "title": "Bonus written into the damage line",
+    "showSource": true,
+    "text": "A fixed number that is part of this spell, weapon or feature's own damage, added after the dice. Magic Missile, for example, deals 1d4 + 1 per dart."
+  },
+  "scale": {
+    "title": "Class feature value",
+    "showSource": true,
+    "text": "A number from a class feature that grows with level, read from the class's level table."
+  },
+  "item.magic-missile": {
+    "title": "Magic Missile: this is one dart",
+    "text": "dnd5e rolled the damage for one dart. Under the 2024 Player's Handbook each dart deals its own 1d4 + 1 Force damage, and the 'roll damage once' rule only covers effects that force saving throws, which Magic Missile does not. Click the card's damage button again for each remaining dart. You get 3 darts with a level 1 slot, plus 1 dart for each slot level above 1."
+  },
+  "healBase": {
+    "title": "Healing dice",
+    "text": "The dice listed on the healing spell or feature. Roll them and add the modifiers below to find the hit points regained."
+  },
+  "rageMissing": {
+    "title": "Rage Damage not added",
+    "text": "The 2024 Player's Handbook gives Rage Damage to any attack that uses Strength, thrown weapons included. dnd5e only adds it to melee weapon attacks, so this total is missing it. Add +{rage} by hand."
+  }
+}

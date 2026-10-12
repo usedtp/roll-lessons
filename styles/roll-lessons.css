@@ -1,0 +1,103 @@
+/* The card element holding a panel gets .rl-host from the script, so no :has() selector is needed. */
+.rl-host {
+  flex-wrap: wrap;
+}
+
+.roll-lessons {
+  flex: 1 0 100%;
+  grid-column: 1 / -1;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0.4rem 0 0.2rem;
+  border: 1px solid var(--color-border-light-tertiary, #8884);
+  border-radius: 5px;
+  background: var(--color-cool-5-90, #0000000d);
+  font-size: var(--font-size-12, 12px);
+  line-height: 1.35;
+}
+
+.roll-lessons > summary {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.roll-lessons > summary::-webkit-details-marker {
+  display: none;
+}
+
+.roll-lessons > summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: 0.35rem;
+  transition: transform 0.15s;
+}
+
+.roll-lessons[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.roll-lessons .rl-body {
+  padding: 0 0.5rem 0.4rem;
+}
+
+.roll-lessons .rl-row {
+  display: grid;
+  grid-template-columns: 3.4em 1fr;
+  column-gap: 0.5rem;
+  padding: 0.2rem 0;
+  border-top: 1px solid var(--color-border-light-tertiary, #8883);
+}
+
+.roll-lessons .rl-row:first-child {
+  border-top: none;
+}
+
+.roll-lessons .rl-value {
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.roll-lessons .rl-label {
+  font-weight: 600;
+}
+
+.roll-lessons .rl-text {
+  margin-top: 0.1rem;
+  opacity: 0.85;
+}
+
+.roll-lessons .rl-unknown .rl-label {
+  font-style: italic;
+}
+
+.roll-lessons .rl-note {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--color-border-light-tertiary, #8885);
+}
+
+.roll-lessons .rl-note-title {
+  font-weight: 700;
+}
+
+.roll-lessons .rl-note ul {
+  margin: 0.1rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.roll-lessons .rl-total {
+  display: grid;
+  grid-template-columns: 3.4em 1fr;
+  column-gap: 0.5rem;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 2px solid var(--color-border-light-tertiary, #8887);
+  font-weight: 700;
+}
+
+.roll-lessons .rl-total .rl-value {
+  font-size: 1.1em;
+}

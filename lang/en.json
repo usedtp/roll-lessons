@@ -1,0 +1,58 @@
+{
+  "ROLLLESSONS": {
+    "settings": {
+      "enabled": {
+        "name": "Enable Roll Lessons",
+        "hint": "Record modifier breakdowns when rolls are made. Applies to rolls made after this is turned on."
+      },
+      "visibility": {
+        "name": "Who sees the breakdown",
+        "hint": "Choose whether players or only the GM see the breakdown panel.",
+        "all": "Everyone",
+        "gm": "GM only"
+      },
+      "detail": {
+        "name": "Detail level",
+        "hint": "Beginner shows the rule text for each modifier. Advanced shows only the labels and values.",
+        "beginner": "Beginner (with rule text)",
+        "advanced": "Advanced (labels and values)"
+      },
+      "expanded": {
+        "name": "Open breakdowns by default",
+        "hint": "Expand the panel automatically on new messages (this client only)."
+      },
+      "customRules": {
+        "name": "Custom rule text (JSON)",
+        "hint": "Optional. JSON that overrides the wording of any rule, for example {\"prof.expertise\": {\"title\": \"Expertise\", \"text\": \"My table wording.\"}}. Leave empty to use the defaults."
+      },
+      "debug": {
+        "name": "Debug logging",
+        "hint": "Write roll configuration details to the browser console (F12). Use this when reporting a problem."
+      }
+    },
+    "panel": {
+      "summary": "How this total was built",
+      "die": "Die",
+      "total": "Total",
+      "kept": "kept",
+      "dropped": "dropped",
+      "advantage": "Advantage",
+      "disadvantage": "Disadvantage",
+      "reasons": "Why",
+      "traits": "Active traits",
+      "target": "Target number",
+      "unknown": "Not identified",
+      "noReason": "dnd5e did not report a reason. It may have been chosen in the roll dialog or with a held key.",
+      "criticalHit": "Critical hit",
+      "base": "Base",
+      "unknownSource": "Unnamed effect",
+      "fromPart": "Roll part",
+      "rolled": "rolled",
+      "critDoubled": "doubled by the critical hit to"
+    },
+    "warn": {
+      "system": "Roll Lessons only works with the dnd5e system.",
+      "customRules": "Roll Lessons: the custom rule text is not valid JSON and was ignored."
+    }
+  }
+}
