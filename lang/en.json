@@ -31,11 +31,15 @@
       },
       "rollLog": {
         "name": "Roll log",
-        "hint": "Record every roll's breakdown to Data/roll-lessons-logs/ (one file per day) so problems can be found and fixed later. Written by the GM's browser."
+        "hint": "Record every roll's breakdown and every Error or Unclear report to Data/roll-lessons-logs/ (one folder per day, a new file every 30 seconds while rolls are made) so problems can be found and fixed later. Written by the GM's browser. Old logs are deleted by hand from that folder."
       },
       "hideZeroDamage": {
         "name": "Hide damage that can only be 0",
         "hint": "Hides damage rolls with no dice and no bonus, such as True Strike's extra Radiant damage below level 5, from chat cards and breakdowns. The roll is kept in the data."
+      },
+      "reportButtons": {
+        "name": "Error and Unclear buttons",
+        "hint": "Show two buttons under every breakdown so players and the GM can report a wrong or unclear explanation. Reports are saved in the roll log and listed in the Roll Lessons reports window."
       }
     },
     "panel": {
@@ -77,11 +81,62 @@
       "noKey": "This part of the roll could not be matched to any source. It is recorded in the roll log.",
       "rulesFailedTitle": "Rule text could not be loaded",
       "rulesFailedText": "This browser could not load Roll Lessons' rule text ({error}) from {url}. Close and reopen this panel to retry. If it keeps failing, reload the page (F5).",
-      "critIncluded": "doubled by the critical hit"
+      "critIncluded": "doubled by the critical hit",
+      "noSentence": "No rule text found on this effect or the item it came from. Add a description to the effect so this row can explain itself.",
+      "amount": "Amount: {formula}.",
+      "duration": "Duration: {duration}.",
+      "warnOnce": "Warning: {name} applies to one roll only. This roll uses it up, so remove the effect now.",
+      "warnUsed": "Warning: an earlier roll already used {name}. It applies to one roll only and should have been removed before this roll.",
+      "warnExpired": "Warning: the duration of {name} has run out, but the effect is still on the creature.",
+      "warnEarly": "Warning: {name} was applied by the same casting of {source} this save is against. It should only be applied after a failed save, so it should not change this roll.",
+      "warnEarlyMaybe": "Warning: {name} comes from {source}, which this save is against. If it was applied by this same casting, it was applied too early: it should only be applied after a failed save. If it came from an earlier casting, it applies."
     },
     "warn": {
       "system": "Roll Lessons only works with the dnd5e system.",
       "customRules": "Roll Lessons: the custom rule text is not valid JSON and was ignored."
+    },
+    "report": {
+      "prompt": "Explanation wrong or unclear?",
+      "error": "Error",
+      "unclear": "Unclear",
+      "hintError": "Report a number, source or rule in this breakdown that is wrong.",
+      "hintUnclear": "Report an explanation in this breakdown that is hard to understand.",
+      "titleError": "Report an error",
+      "titleUnclear": "Report an unclear explanation",
+      "introError": "Tell the GM which part of this breakdown is wrong.",
+      "introUnclear": "Tell the GM which part of this breakdown is hard to understand.",
+      "rows": "Which lines? (optional)",
+      "comment": "Comment (optional, up to 500 characters)",
+      "disclaimer": "Your comment is saved in this world's roll log. The GM may share it with the Roll Lessons developer to improve explanations. Don't include real names or personal details.",
+      "send": "Send report",
+      "sent": "Report sent to the GM.",
+      "logged": "Report saved in the roll log.",
+      "queued": "No GM is online. Your report is saved in this browser and will be sent when a GM connects.",
+      "resent": "Roll Lessons: {count} saved report(s) sent to the GM.",
+      "received": "Roll Lessons: {user} reported {category} on a roll. Open Settings > Roll Lessons reports to read it."
+    },
+    "reports": {
+      "title": "Roll Lessons reports",
+      "menuName": "Reports",
+      "menuLabel": "Roll Lessons reports",
+      "menuHint": "Read the Error and Unclear reports players and GMs sent from the breakdown panels.",
+      "filter_all": "All",
+      "filter_error": "Error",
+      "filter_unclear": "Unclear",
+      "error": "Error",
+      "unclear": "Unclear",
+      "showFixed": "Show fixed",
+      "refresh": "Refresh",
+      "empty": "No reports.",
+      "rowsMarked": "Lines marked:",
+      "panel": "Breakdown as shown",
+      "show": "Show message",
+      "gone": "This chat message was deleted.",
+      "notInLog": "The message is not loaded in the chat log. Scroll up in chat and try again.",
+      "statusNew": "New",
+      "statusFixed": "Fixed",
+      "statusReworded": "Reworded",
+      "statusWontfix": "Won't fix"
     }
   }
 }

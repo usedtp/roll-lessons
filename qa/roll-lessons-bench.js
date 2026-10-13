@@ -4,14 +4,14 @@
  * against QA targets and checks every breakdown against the 2024 Player's Handbook rules.
  * Test chat messages are whispered to GMs and deleted at the end of the run.
  *
- * Options (set before running): window.__rlBench = { phases: ["setup","weapons","spells","ui","log"],
+ * Options (set before running): window.__rlBench = { phases: ["setup","weapons","spells","effects","ui","log"],
  *   spellLimit: Infinity, weaponLimit: Infinity, keepMessages: false }
  * Returns a summary; full results are kept in window.__rlBenchResults.
  */
 (async () => {
   const MOD = "roll-lessons";
   const QA = "Roll Lessons QA";
-  const opt = Object.assign({ phases: ["setup", "weapons", "spells", "ui", "log"], spellLimit: Infinity, weaponLimit: Infinity, keepMessages: false }, window.__rlBench ?? {});
+  const opt = Object.assign({ phases: ["setup", "weapons", "spells", "effects", "ui", "log"], spellLimit: Infinity, weaponLimit: Infinity, keepMessages: false }, window.__rlBench ?? {});
   const D = { configure: false };
   const PRIVATE = CONST.DICE_ROLL_MODES?.PRIVATE ?? "gmroll";
   const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
@@ -305,6 +305,97 @@
     await setCaster(caster, "int");
   }
 
+  /* ---------- Effects: source, rule sentence, duration and timing (1.5.0) ---------- */
+
+  const lines = p => p.rows.map(r => `${r.label} ${r.text}`).join(" | ");
+  const effectData = (name, changes, extra = {}) => ({ name, img: "icons/svg/aura.svg", changes, ...extra });
+
+  async function withEffect(actor, data, fn) {
+    const [effect] = await actor.createEmbeddedDocuments("ActiveEffect", [data]);
+    try { return await fn(effect); } finally { if (actor.effects.get(effect.id)) await effect.delete(); }
+  }
+
+  async function effects() {
+    await viewQA();
+    const caster = qa("QA Caster");
+    const tgt = qa("QA Target, plain");
+    const fighter = qa("QA Strength Fighter");
+    const sliver = caster.items.find(i => i.name === "Mind Sliver");
+    const sliverSave = sliver?.system.activities.find(a => a.type === "save");
+    const save = (actor, ability, extra = {}) => actor.rollSavingThrow({ ability, ...extra }, D, msg());
+
+    // Mind Sliver penalty on the next save, named with its caster and spell.
+    if (sliverSave) {
+      const data = effectData("Slivered", [{ key: "system.bonuses.abilities.save", type: "add", value: "-1d4" }], { origin: sliverSave.uuid, duration: { value: 1, units: "rounds" } });
+      await withEffect(tgt, data, async () => {
+        const r1 = await save(tgt, "int");
+        await checkMessage("effects", "Slivered: source and rule sentence", r1?.[0]?.parent, p => {
+          const row1 = row(p, /Penalty: Slivered, from QA Caster's Mind Sliver/);
+          return [
+            ...(row1 ? [] : [`no "Penalty: Slivered, from QA Caster's Mind Sliver" row (${lines(p)})`]),
+            ...(/subtract 1d4/i.test(row1?.text ?? "") ? [] : ["no Mind Sliver rule sentence"]),
+            ...(/applies to one roll only/.test(row1?.text ?? "") ? [] : ["no one-roll warning"])
+          ];
+        });
+        await sleep(800);
+        const r2 = await save(tgt, "int");
+        await checkMessage("effects", "Slivered: second roll warned as already used", r2?.[0]?.parent, p => (/already used/.test(row(p, /Slivered/)?.text ?? "") ? [] : ["no already-used warning"]));
+      });
+      // Applied by the same casting, before the save that decides it.
+      target("QA Target, plain");
+      const res = await sliverSave.use({ consume: false }, D, { create: true, data: { whisper: gmIds } });
+      const usage = res?.message ?? game.messages.contents.at(-1);
+      await sleep(300);
+      await withEffect(tgt, data, async () => {
+        const speaker = ChatMessage.getSpeaker({ actor: tgt });
+        const r3 = await tgt.rollSavingThrow({ ability: "int", target: sliverSave.save.dc.value }, D, { create: true, rollMode: PRIVATE, data: { whisper: gmIds, speaker, system: { ...sliverSave.messageSources, origin: usage?.id } } });
+        await checkMessage("effects", "Slivered applied before its own save: warned", r3?.[0]?.parent, p => (/applied by the same casting|applied too early/.test(row(p, /Slivered/)?.text ?? "") ? [] : [`no too-early warning (${lines(p)})`]));
+      });
+    } else record("effects", "Slivered", ["QA Caster has no Mind Sliver with a save activity"]);
+
+    // Skill bonus written as a formula (Thaumaturge style): value, sentence and amount in words.
+    const thaum = effectData("QA Thaumaturge", [{ key: "system.skills.arc.bonuses.check", type: "add", value: "(max(1,@abilities.wis.mod))" }],
+      { description: "<p>Your connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1).</p>" });
+    await withEffect(caster, thaum, async () => {
+      const want = Math.max(1, caster.system.abilities.wis.mod);
+      const r = await caster.rollSkill({ skill: "arc" }, D, msg());
+      await checkMessage("effects", "Formula skill bonus (Thaumaturge style)", r?.[0]?.parent, p => {
+        const b = row(p, /QA Thaumaturge/);
+        return [
+          ...(b?.v === `+${want}` ? [] : [`bonus row ${b?.v}, expected +${want}`]),
+          ...(/Arcana or Religion/.test(b?.text ?? "") ? [] : ["no rule sentence"]),
+          ...(/Wisdom modifier, minimum \+1/.test(b?.text ?? "") ? [] : ["amount not in words"])
+        ];
+      });
+    });
+
+    // Bless from the caster's spell: bonus die named with its source.
+    const bless = caster.items.find(i => i.name === "Bless");
+    await withEffect(fighter, effectData("Bless", [{ key: "system.bonuses.abilities.save", type: "add", value: "1d4" }], { origin: bless?.uuid, duration: { value: 10, units: "rounds" } }), async () => {
+      const r = await save(fighter, "str");
+      await checkMessage("effects", "Bless on a save", r?.[0]?.parent, p => {
+        const b = row(p, /Bonus: Bless/);
+        return [
+          ...(b ? [] : [`no Bless row (${lines(p)})`]),
+          ...(!bless || /QA Caster's Bless/.test(b?.label ?? "") ? [] : ["source not named"]),
+          ...(!bless || /1d4/.test(b?.text ?? "") ? [] : ["no Bless rule sentence"]),
+          ...(/Duration:/.test(b?.text ?? "") ? [] : ["no duration"])
+        ];
+      });
+    });
+
+    // Poisoned: disadvantage reason with the condition's rule text.
+    try {
+      await fighter.toggleStatusEffect("poisoned", { active: true });
+      target("QA Target, plain");
+      const item = fighter.items.find(i => i.name === "Longsword") ?? fighter.items.find(i => i.type === "weapon");
+      const atk = await item.system.activities.find(a => a.type === "attack").rollAttack({}, D, msg());
+      await checkMessage("effects", "Poisoned attack: disadvantage reason", atk?.[0]?.parent, p => (noteHas(p, /Poisoned.*Disadvantage on attack rolls/) ? [] : [`no Poisoned reason with rule text (${p.notes.join(" | ")})`]));
+    } finally {
+      await fighter.toggleStatusEffect("poisoned", { active: false });
+    }
+  }
+
   /* ---------- Real interface clicks ---------- */
 
   async function clickNormal() {
@@ -340,13 +431,23 @@
   async function log() {
     const api = game.modules.get(MOD)?.api;
     const n = await api?.flushLog?.();
-    const day = new Date().toISOString().slice(0, 10);
-    const res = await fetch(foundry.utils.getRoute(`${api?.LOG_DIR}/${day}.json`) + `?t=${Date.now()}`, { cache: "no-store" });
-    const entries = res.ok ? await res.json() : [];
+    const entries = (await api?.readAllLogs?.()) ?? [];
     const ids = new Set(entries.map(e => e.message));
     const ours = [...created].filter(id => game.messages.get(id)?.rolls?.some(r => r.options?.rollLessons));
     const logged = ours.filter(id => ids.has(id)).length;
-    record("log", "roll log written and readable", res.ok && (logged > 0 || !ours.length) ? [] : [`log ${res.status}, ${logged}/${ours.length} logged`], { flushed: n, entries: entries.length });
+    const batches = (await api?.listLogFiles?.() ?? []).filter(f => /\/\d{4}-\d{2}-\d{2}\/\d{6}-/.test(f)).length;
+    record("log", "roll log written to batch files and readable", batches > 0 && (logged === ours.length) ? [] : [`${batches} batch files, ${logged}/${ours.length} logged`], { flushed: n, entries: entries.length });
+    // A report goes through the same path a player's report takes on the GM side.
+    const msg1 = game.messages.get(ours[0]);
+    if (msg1 && api?.sendReport) {
+      const L = msg1.rolls[0].options.rollLessons;
+      const rep = api.buildReport({ category: "unclear", message: msg1, index: 0, roll: msg1.rolls[0], L, text: "bench", rows: [], comment: "Roll Lessons bench test report" });
+      const outcome = await api.sendReport(rep);
+      const all = await api.readAllLogs({ onlyReports: true });
+      const found = all.some(e => e.id === rep.id);
+      if (found) await api.setReportStatus(rep.id, { s: "wontfix", note: "bench test" });
+      record("log", "report logged and readable", outcome === "logged" && found ? [] : [`outcome ${outcome}, found ${found}`]);
+    }
   }
 
   /* ---------- Run ---------- */
@@ -356,6 +457,7 @@
     if (opt.phases.includes("setup")) await setup();
     if (opt.phases.includes("weapons")) await weapons();
     if (opt.phases.includes("spells")) await spells();
+    if (opt.phases.includes("effects")) await effects();
     if (opt.phases.includes("ui")) await ui();
     if (opt.phases.includes("log")) await log();
   } catch (err) {

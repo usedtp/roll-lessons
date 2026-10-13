@@ -1,10 +1,13 @@
 import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { expectedSources, findCombination } from "./phb.mjs";
+import { resolve, HAS_DICE } from "./text.mjs";
+import { contributors, explainContributors, explainReason, explainEffect, exLabel } from "./effects.mjs";
 
 /*
  * Stored format (roll.options.rollLessons), kept small because it is saved in every chat message:
- * { v: 2, k: kind, c: { a, s, m, p, l, cr, id }, i: [[ruleKey|null, value|formula, extra?, how?], ...], r?: { a, d, o }, pp?: parts }
+ * { v: 2, k: kind, c: { a, s, m, p, l, cr, id }, i: [[ruleKey|null, value|formula, extra?, how?, explanations?], ...], r?: { a, d, o }, pp?: parts }
+ * explanations: see effects.mjs. Advantage reasons are strings or explanations.
  * how: l = dnd5e label, r = known bonus field, a = Automated Conditions 5e, v = rule value match,
  *      c = combination of rule sources, s = sheet or effect search, x = unmatched
  * Rule text is not stored. It is looked up at render time.
@@ -35,22 +38,7 @@ export function kindFromHookNames(names) {
 const NON_D20 = new Set(["damage", "hitDie", "generic"]);
 export const isD20Kind = k => !NON_D20.has(k);
 
-const NUMERIC = /^[\d\s+\-*/().]+$/;
-const HAS_DICE = /\d*d\d/i;
-
-/** Number for flat parts, formula string for dice parts. Avoids building Roll objects where possible. */
-function resolve(part, data) {
-  if (/^[+-]?\d+$/.test(part)) return Number(part);
-  let f;
-  try { f = Roll.replaceFormulaData(part, data ?? {}, { missing: "0" }); } catch (err) { return part; }
-  if (HAS_DICE.test(f)) return f;
-  try {
-    if (NUMERIC.test(f)) return Roll.safeEval(f);
-    return new Roll(f).evaluateSync({ strict: false }).total;
-  } catch (err) {
-    return f;
-  }
-}
+export { resolve };
 
 function formatCR(cr) {
   if (cr === undefined || cr === null || cr === "") return undefined;
@@ -209,29 +197,15 @@ function rawSources(config, rc, x, kind) {
   return out;
 }
 
-/** Names of the effects behind @ruleBonus for this roll, filtered by their conditions. */
-function ruleBonusSources(x, kind, data) {
-  const cats = kind === "damage" ? ["damage:bonus", "healing:bonus"]
-    : kind === "attack" ? ["attack:bonus", "d20:bonus"]
-    : kind === "save" ? ["save:bonus", "d20:bonus"]
-    : ["check", "skill", "tool", "initiative"].includes(kind) ? ["check:bonus", "d20:bonus"] : [];
-  const names = [];
-  for (const src of [x.actor, x.item]) {
-    const map = src?.appliedRules;
-    if (typeof map?.get !== "function") continue;
-    for (const key of cats) {
-      for (const r of map.get(key) ?? []) {
-        try {
-          const cd = r.effect?.getRuleConditionData?.(data) ?? data;
-          if (r.effect?.system?.conditions?.check?.(cd) === false) continue;
-          if (r.conditions?.check?.(cd) === false) continue;
-        } catch (err) { /* keep it */ }
-        names.push(sourceName(r.effect, x.actor));
-      }
-    }
-  }
-  return [...new Set(names)].join(", ");
+/** Effects, rules and sheet settings behind a bonus, with an explanation for each. */
+function bonusExplanations(x, kind, data, actionType) {
+  const list = contributors({ actor: x.actor, item: x.item, kind, x, data, actionType });
+  if (!list.length) return null;
+  const skillLabel = x.skill ? (CONFIG.DND5E?.skills?.[x.skill]?.label ?? null) : null;
+  return explainContributors(list, x.actor, { kind, skillLabel });
 }
+
+const isNegative = v => (typeof v === "number" ? v < 0 : /^-/.test(String(v).trim()));
 
 /** Effects with a damage-related change whose value equals n. Used only to name loose numbers. */
 function effectsWithValue(actor, n) {
@@ -282,7 +256,7 @@ function findSource(whole, x, config, kind) {
       const fits = kind === "damage" ? /damage/i.test(k) : kind === "attack" ? /attack|\.(mwak|rwak|msak|rsak)\./i.test(k) : /bonus/i.test(k);
       return fits && String(c.value).trim().replace(/^\+\s*/, "") === whole;
     });
-    if (ch) return ["effectValue", `${sourceName(e, x.actor)} (${ch.key})`];
+    if (ch) return ["effectValue", `${sourceName(e, x.actor)} (${ch.key})`, e, String(ch.value)];
   }
   return null;
 }
@@ -295,7 +269,10 @@ function itemsFor(part, rc, x, kind, state) {
   const match = state.raw.find(s => s.raw === whole.replace(/^\+\s*/, ""));
   if (match) {
     const key = RuleBook.pick([match.key, "flatBonus"]);
-    return [[key, resolve(whole, rc?.data), match.src || undefined, "r"]];
+    const ex = match.key === "actorDamageBonus" ? bonusExplanations(x, kind, rc?.data ?? {}, state.actionType) : null;
+    const item = [key, resolve(whole, rc?.data), (ex ? ex.map(exLabel).join("; ") : match.src) || undefined, "r"];
+    if (ex) item.push(ex);
+    return [item];
   }
 
   const terms = splitTerms(whole);
@@ -339,11 +316,16 @@ function itemsFor(part, rc, x, kind, state) {
       continue;
     }
 
-    if (path?.[0] === "ruleBonus") extra = ruleBonusSources(x, kind, rc?.data ?? {}) || undefined;
+    let ex = null;
+    if (path?.[0] === "ruleBonus") {
+      ex = bonusExplanations(x, kind, rc?.data ?? {}, state.actionType);
+      extra = ex ? ex.map(exLabel).join("; ") : undefined;
+      if (isNegative(value)) keys = ["rulePenalty", ...keys];
+    }
     if (path?.[0] === "scale") extra = scaleLabel(term, x.actor);
     const key = RuleBook.pick(keys);
     if (!key) items.push(["__loose", value, term]);
-    else items.push([key, value, extra || undefined, "l"]);
+    else items.push(ex ? [key, value, extra || undefined, "l", ex] : [key, value, extra || undefined, "l"]);
   }
   return items;
 }
@@ -388,7 +370,7 @@ function collectEffects(x, kind, want, out) {
       const p = k.slice(7);
       if (!paths.some(f => p.startsWith(`${f}.`))) continue;
       const side = classify(change.type, Number(change.value));
-      if (side && want[side]) out[side].push(sourceName(effect, x.actor));
+      if (side && want[side]) out[side].push(explainReason(effect, x.actor, kind));
     }
   }
   if (want.a && (kind === "skill" || kind === "tool") && x.skill && x.tool) {
@@ -429,12 +411,12 @@ function collectRules(x, kind, want, out) {
       if (r.effect?.system?.conditions?.check?.(cd) === false) continue;
       if (r.conditions?.check?.(cd) === false) continue;
     } catch (err) { continue; }
-    const name = sourceName(r.effect, x.actor);
+    const ex = explainReason(r.effect, x.actor, kind);
     const v = String(r.value ?? r).trim();
-    if (want.a && ["1", "+1", "=1", "=+1"].includes(v)) out.a.push(name);
-    else if (want.d && ["-1", "=-1"].includes(v)) out.d.push(name);
-    else if (v === ">=0") out.o.push(`${name}: cannot have disadvantage`);
-    else if (v === "<=0") out.o.push(`${name}: cannot have advantage`);
+    if (want.a && ["1", "+1", "=1", "=+1"].includes(v)) out.a.push(ex);
+    else if (want.d && ["-1", "=-1"].includes(v)) out.d.push(ex);
+    else if (v === ">=0") out.o.push(`${exLabel(ex)}: cannot have disadvantage`);
+    else if (v === "<=0") out.o.push(`${exLabel(ex)}: cannot have advantage`);
   }
 }
 
@@ -447,7 +429,16 @@ function collectReasons(x, kind, mode) {
   try { collectEffects(x, kind, want, out); } catch (err) { /* ignore */ }
   try { collectRules(x, kind, want, out); } catch (err) { /* ignore */ }
   const r = {};
-  for (const k of ["a", "d", "o"]) if (out[k].length) r[k] = [...new Set(out[k])];
+  for (const k of ["a", "d", "o"]) {
+    const seen = new Set();
+    const list = out[k].filter(e => {
+      const id = typeof e === "string" ? e : `${e.n}|${e.o ?? ""}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    if (list.length) r[k] = list;
+  }
   return Object.keys(r).length ? r : null;
 }
 
@@ -473,7 +464,9 @@ export function restoreParts(labelled, parts, data) {
 export function buildLessons(config, rc, kind) {
   const x = context(config, rc);
   const lessons = { v: 2, k: kind, c: x.c, i: [] };
-  const state = { raw: rawSources(config, rc, x, kind), config };
+  let actionType;
+  try { actionType = config?.subject?.getActionType?.(rc?.options?.attackMode ?? config?.attackMode); } catch (err) { /* none */ }
+  const state = { raw: rawSources(config, rc, x, kind), config, actionType };
   const parts = repairParts(rc?.parts ?? []);
   for (const p of parts) if (p) lessons.i.push(...itemsFor(p, rc, x, kind, state));
   resolveLoose(lessons, state, rc, x, kind, config);
@@ -541,7 +534,12 @@ function resolveLoose(lessons, state, rc, x, kind, config) {
       }
     }
     const found = findSource(plain, x, config, kind);
-    if (found) { out.push([found[0], value, found[1], "s"]); continue; }
+    if (found) {
+      const it = [found[0], value, found[1], "s"];
+      if (found[2]) it.push([explainEffect(found[2], x.actor, { kind, value, raw: found[3] })]);
+      out.push(it);
+      continue;
+    }
     const names = typeof value === "number" ? effectsWithValue(x.actor, value) : "";
     if (names) { out.push(["flatBonus.possible", value, names, "s"]); continue; }
     out.push(["notFromRules", value, plain, "x"]);

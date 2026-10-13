@@ -2,7 +2,11 @@ import { MODULE_ID, cfg, registerSettings, refreshSettings } from "./settings.mj
 import { RuleBook } from "./rules.mjs";
 import { buildLessons, addReasons, kindFromHookNames, restoreParts, repairParts } from "./breakdown.mjs";
 import { injectPanels, onRulesLoaded } from "./render.mjs";
-import { logMessage, flushLog, LOG_DIR } from "./log.mjs";
+import { logMessage, flushLog, LOG_DIR, isWriter, readAllLogs, readReportStatus, setReportStatus, listLogFiles } from "./log.mjs";
+import { markUsed } from "./effects.mjs";
+import { registerReports, sendReport, buildReport } from "./report.mjs";
+import { registerReportsMenu, ReportsApp } from "./reports-app.mjs";
+import { review } from "./review.mjs";
 
 Hooks.once("init", () => {
   registerSettings(() => RuleBook.load());
@@ -11,8 +15,14 @@ Hooks.once("init", () => {
   Hooks.on("dnd5e.preConfigureInitiative", onPreConfigureInitiative);
   Hooks.on("dnd5e.renderChatMessage", injectPanels);
   Hooks.on("createChatMessage", logMessage);
+  Hooks.on("createChatMessage", message => { if (cfg.enabled) markUsed(message, isWriter); });
   Hooks.on(`${MODULE_ID}.rulesLoaded`, onRulesLoaded);
-  game.modules.get(MODULE_ID).api = { flushLog, LOG_DIR };
+  registerReportsMenu();
+  game.modules.get(MODULE_ID).api = {
+    flushLog, LOG_DIR, listLogFiles, readAllLogs, readReportStatus, setReportStatus, sendReport, buildReport,
+    review: async () => review(await readAllLogs(), await readReportStatus()),
+    openReports: () => new ReportsApp().render({ force: true })
+  };
 });
 
 // Start loading rule text as early as settings allow; panels wait for it (RuleBook.ready).
@@ -26,6 +36,7 @@ Hooks.once("ready", () => {
     cfg.enabled = false;
     ui.notifications.warn(game.i18n.localize("ROLLLESSONS.warn.system"));
   }
+  registerReports();
 });
 
 /** Labelled roll parts per roll process, so rebuilt configs keep their sources. Garbage collected with the process. */

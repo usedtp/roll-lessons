@@ -26,6 +26,9 @@ Open **Add-on Modules** and click **Update** next to Roll Lessons.
 - Damage dice and flat bonuses, with the source of every number. Numbers dnd5e passes without a label are matched to the 2024 Player's Handbook sources for that roll, including two sources merged into one number (Strength +4 and Rage +2 shown as 6).
 - "No proficiency" rows that name the proficiencies the creature does have.
 - Bonuses added by Automated Conditions 5e, named by the effect that granted them.
+- Bonuses and penalties from effects, named with their source ("Penalty: Slivered, from the caster's Mind Sliver"), the rule sentence, the amount in words for formulas, and how long they last.
+- Conditions behind advantage or disadvantage, with their Player's Handbook rule text.
+- Timing warnings: an effect that applies to one roll only, one already used by an earlier roll, one applied before the save that decides it, and one past its duration.
 - Attacks: Hit or Miss against each target's Armor Class.
 - Saves against a spell or ability: how the DC is built (8 + spellcasting modifier + Proficiency Bonus), Succeeded or Failed, and what the spell says happens. Also shown on the save results folded into spell cards.
 - Damage: each target's Resistance, Immunity or Vulnerability, its source, and the damage taken.
@@ -46,8 +49,10 @@ Open **Game Settings**, **Configure Settings**, **Roll Lessons**.
 | Open breakdowns by default | Off | Expands each panel automatically |
 | Custom rule text (JSON) | Empty | Overrides the wording of any rule |
 | Debug logging | Off | Writes roll details to the browser console |
-| Roll log (GM) | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one file per day |
+| Roll log (GM) | On | Saves every roll's breakdown and every report to `Data/roll-lessons-logs/`, one folder per day |
 | Hide damage that can only be 0 | On | Hides damage rolls that can only total 0, such as True Strike's extra damage below level 5 |
+| Error and Unclear buttons | On | Shows the report buttons under every breakdown |
+| Roll Lessons reports (GM) | Button | Opens the list of reports |
 
 Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 
@@ -61,4 +66,6 @@ Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 
 ## Report a problem
 
-Open an issue on this repo with your Foundry and dnd5e versions and the day's file from `Data/roll-lessons-logs/` (the Roll log records every roll's breakdown).
+In the game: click **Error** or **Unclear** under the breakdown. Mark the lines that are wrong, add a comment if you want, and send. The GM reads reports in **Configure Settings**, **Roll Lessons**, **Roll Lessons reports**.
+
+On GitHub: open an issue with your Foundry and dnd5e versions and the day's folder from `Data/roll-lessons-logs/`.

@@ -2,6 +2,8 @@ import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { isD20Kind } from "./breakdown.mjs";
 import { logIssue } from "./log.mjs";
+import { exLabel, appliedEarly } from "./effects.mjs";
+import { reportBar } from "./report.mjs";
 
 const t = key => game.i18n.localize(`ROLLLESSONS.${key}`);
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
@@ -25,14 +27,68 @@ function el(tag, cls, text) {
   return node;
 }
 
-function row(value, label, text, unknown) {
+function row(value, label, text, unknown, lines) {
   const r = el("div", unknown ? "rl-row rl-unknown" : "rl-row");
   r.append(el("div", "rl-value", value));
   const body = el("div");
   body.append(el("div", "rl-label", label));
   if (text) body.append(el("div", "rl-text", text));
+  for (const line of lines ?? []) body.append(el("div", line.warn ? "rl-warn" : "rl-ex", line.text));
   r.append(body);
   return r;
+}
+
+const fmtV = v => (typeof v === "number" ? signed(v) : String(v));
+
+/**
+ * Lines under a row for each effect behind it: the rule sentence, the amount in words, the duration,
+ * and timing warnings. `early` holds the save's activity and item, to spot an effect applied too soon.
+ */
+function exLines(list, early) {
+  const lines = [];
+  for (const ex of list ?? []) {
+    const head = list.length > 1 ? `${exLabel(ex)}${ex.v !== undefined ? ` (${fmtV(ex.v)})` : ""}: ` : "";
+    let text = `${head}${ex.s ?? t("panel.noSentence")}`;
+    if (ex.f) text += ` ${game.i18n.format("ROLLLESSONS.panel.amount", { formula: ex.f })}`;
+    if (ex.d) text += ` ${game.i18n.format("ROLLLESSONS.panel.duration", { duration: ex.d })}`;
+    lines.push({ text });
+    const warns = [...(ex.w ?? [])];
+    const tooSoon = early ? appliedEarly(ex, early) : false;
+    if (tooSoon === "yes") warns.splice(0, warns.length, "early", ...warns.filter(w => w === "expired"));
+    else if (tooSoon) warns.unshift("earlyMaybe");
+    for (const w of warns) {
+      const key = { once: "warnOnce", used: "warnUsed", expired: "warnExpired", early: "warnEarly", earlyMaybe: "warnEarlyMaybe" }[w];
+      if (key) lines.push({ warn: true, text: game.i18n.format(`ROLLLESSONS.panel.${key}`, { name: ex.n, source: early?.name ?? ex.o ?? "" }) });
+    }
+  }
+  return lines;
+}
+
+/** Sign of each dice group in a formula, in order: "1d4 + -1d4" -> [1, -1]. Exported for tests. */
+export function diceSigns(formula) {
+  const out = [];
+  const re = /([+\-\s]*)(\d*d\d+)/gi;
+  let m;
+  while ((m = re.exec(String(formula)))) out.push(((m[1].match(/-/g) ?? []).length % 2) ? -1 : 1);
+  return out;
+}
+
+/** One advantage or disadvantage reason: a plain string, or an effect explanation. */
+function reasonLine(r) {
+  if (typeof r === "string") return r;
+  let text = exLabel(r);
+  if (r.s) text += `: ${r.s}`;
+  if (r.d) text += ` ${game.i18n.format("ROLLLESSONS.panel.duration", { duration: r.d })}`;
+  return text;
+}
+
+/** The spell or ability a save is against, when the message names one. */
+function saveSource(message, kind) {
+  if (!["save", "concentration"].includes(kind)) return null;
+  const activity = docFrom(message?.system?.activity?.uuid);
+  if (!activity) return null;
+  const cast = game.messages?.get(message?.system?.origin);
+  return { activity: activity.uuid, item: activity.item?.uuid, name: activity.item?.name ?? activity.name, castAt: cast?.timestamp };
 }
 
 function note(title, lines) {
@@ -56,13 +112,20 @@ function expandCtx(c = {}) {
   };
 }
 
-function flatTotal(roll) {
-  const { OperatorTerm, NumericTerm } = foundry.dice.terms;
+/**
+ * Flat part of a roll's total: every term without dice, signed. Counts bracketed and function terms
+ * such as "(max(1,3))", which 1.4.0 missed (it read numbers only and showed a false "Added after" row).
+ */
+export function flatTotal(roll) {
   let sign = 1;
   let sum = 0;
-  for (const term of roll.terms) {
-    if (term instanceof OperatorTerm) sign = term.operator === "-" ? -1 : 1;
-    else if (term instanceof NumericTerm) { sum += sign * term.number; sign = 1; }
+  for (const term of roll?.terms ?? []) {
+    if (typeof term.operator === "string") { sign = term.operator === "-" ? -1 : 1; continue; }
+    if (term.faces === undefined && !term.dice?.length) {
+      const v = Number(term.total ?? term.number ?? 0);
+      if (Number.isFinite(v)) sum += sign * v;
+    }
+    sign = 1;
   }
   return sum;
 }
@@ -213,24 +276,26 @@ function buildBody(roll, L, message) {
     body.append(row(String(die.total ?? kept[0] ?? "?"), `${t("panel.die")} (d${die.faces})`, detail));
     if (mode !== 0) {
       const names = (mode === 1 ? L.r?.a : L.r?.d) ?? [];
-      const lines = names.length ? [...names] : [t("panel.noReason")];
-      if (L.r?.o) lines.push(...L.r.o);
+      const lines = names.length ? names.map(reasonLine) : [t("panel.noReason")];
+      if (L.r?.o) lines.push(...L.r.o.map(reasonLine));
       body.append(note(`${mode === 1 ? t("panel.advantage") : t("panel.disadvantage")}: ${t("panel.reasons")}`, lines));
     }
   }
 
   let sum = 0;
-  for (const [key, value, extra] of L.i) {
+  const early = saveSource(message, L.k);
+  for (const [key, value, extra, , ex] of L.i) {
     const d = key ? RuleBook.describe(key, { ...ctx, status: extra, source: extra }) : null;
     if (d && extra && RuleBook.data[key]?.showSource) d.title = `${d.title}: ${extra}`;
-    let text = beginner ? d?.text : "";
+    const lines = ex?.length ? exLines(ex, early) : null;
+    let text = beginner && !lines ? d?.text : "";
     if (key && RuleBook.data[key]?.showPart && extra) text = [text, `${t("panel.fromPart")}: ${extra}`].filter(Boolean).join(" ");
     if (typeof value === "number") {
       sum += value;
-      if (d) body.append(row(signed(value), d.title, text, false));
+      if (d) body.append(row(signed(value), d.title, text, false, lines));
       else {
         const m = missingRule(key, extra, message, L.k);
-        body.append(row(signed(value), m.label, m.text, true));
+        body.append(row(signed(value), m.label, m.text, true, lines));
       }
     } else {
       // Dice item: match it to the dice that were rolled for it.
@@ -238,7 +303,9 @@ function buildBody(roll, L, message) {
       const neg = String(value).startsWith("-");
       const count = (formula.match(/\d*d\d+/gi) ?? []).length;
       const used = dice.splice(0, count);
-      const rolled = used.length ? used.reduce((a, x) => a + (x.total ?? 0), 0) : null;
+      // Each dice group keeps its own sign: a bonus of "1d4 + -1d4" (Bless and a penalty together) nets the two.
+      const signs = diceSigns(formula);
+      const rolled = used.length ? used.reduce((a, x, j) => a + (signs[j] ?? 1) * (x.total ?? 0), 0) : null;
       // Flat numbers inside the same formula, e.g. the +1 in a situational "1d4 + 1".
       let flat = 0;
       try {
@@ -266,7 +333,7 @@ function buildBody(roll, L, message) {
       const label = rolled === null
         ? `${title} (${written})`
         : `${title}: ${written}${doubled} ${t("panel.rolled")} ${faces}${flatNote}`;
-      body.append(row(shown, label, text, !d));
+      body.append(row(shown, label, text, !d, lines));
     }
   }
   const critDamage = L.k === "damage" && (roll.isCritical || opts.isCritical);
@@ -365,6 +432,9 @@ function shell(roll, L, index, message) {
     delete panel.dataset.failed;
     panel.dataset.built = "1";
     try { panel.append(buildBody(roll, L, message)); } catch (err) { console.error(`${MODULE_ID} | render failed`, err); }
+    if (cfg.reportButtons) {
+      try { panel.append(reportBar({ panel, message, index, roll, L })); } catch (err) { console.error(`${MODULE_ID} | report buttons failed`, err); }
+    }
   };
   panel._rlFill = fill;
   if (cfg.expanded) { panel.open = true; fill(); }

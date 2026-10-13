@@ -58,7 +58,7 @@
   "ruleBonus": {
     "title": "Bonus",
     "showSource": true,
-    "text": "A bonus granted by an active effect or rule on the character or item, such as Rage, Bless or a magic item."
+    "text": "A bonus from an effect, feature or setting on the creature or item. Each source and its rule are listed below."
   },
   "bonus": {
     "title": "Bonus",
@@ -274,5 +274,70 @@
     "title": "Cantrip Upgrade",
     "showActualDice": true,
     "text": "This cantrip's dice grow with character level: they increase at levels 5, 11 and 17. At level {level} the dice shown here are rolled."
+  },
+  "condition.blinded": {
+    "title": "Blinded condition",
+    "text": "You can't see and automatically fail any ability check that requires sight. Attack rolls against you have Advantage, and your attack rolls have Disadvantage."
+  },
+  "condition.charmed": {
+    "title": "Charmed condition",
+    "text": "You can't attack the charmer or target the charmer with damaging abilities or magical effects. The charmer has Advantage on any ability check to interact with you socially."
+  },
+  "condition.deafened": {
+    "title": "Deafened condition",
+    "text": "You can't hear and automatically fail any ability check that requires hearing."
+  },
+  "condition.exhaustion": {
+    "title": "Exhaustion condition",
+    "text": "When you make a D20 Test, the roll is reduced by 2 times your Exhaustion level. Your Speed is reduced by a number of feet equal to 5 times your Exhaustion level. Finishing a Long Rest removes 1 of your Exhaustion levels."
+  },
+  "condition.frightened": {
+    "title": "Frightened condition",
+    "text": "You have Disadvantage on ability checks and attack rolls while the source of fear is within line of sight. You can't willingly move closer to the source of fear."
+  },
+  "condition.grappled": {
+    "title": "Grappled condition",
+    "text": "Your Speed is 0 and can't increase. You have Disadvantage on attack rolls against any target other than the grappler."
+  },
+  "condition.incapacitated": {
+    "title": "Incapacitated condition",
+    "text": "You can't take any action, Bonus Action, or Reaction. Your Concentration is broken. You can't speak. If you're Incapacitated when you roll Initiative, you have Disadvantage on the roll."
+  },
+  "condition.invisible": {
+    "title": "Invisible condition",
+    "text": "If you're Invisible when you roll Initiative, you have Advantage on the roll. Attack rolls against you have Disadvantage, and your attack rolls have Advantage. If a creature can somehow see you, you don't gain this benefit against that creature."
+  },
+  "condition.paralyzed": {
+    "title": "Paralyzed condition",
+    "text": "You have the Incapacitated condition. Your Speed is 0 and can't increase. You automatically fail Strength and Dexterity saving throws. Attack rolls against you have Advantage. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you."
+  },
+  "condition.petrified": {
+    "title": "Petrified condition",
+    "text": "You have the Incapacitated condition. Your Speed is 0 and can't increase. Attack rolls against you have Advantage. You automatically fail Strength and Dexterity saving throws. You have Resistance to all damage. You have Immunity to the Poisoned condition."
+  },
+  "condition.poisoned": {
+    "title": "Poisoned condition",
+    "text": "You have Disadvantage on attack rolls and ability checks."
+  },
+  "condition.prone": {
+    "title": "Prone condition",
+    "text": "You have Disadvantage on attack rolls. An attack roll against you has Advantage if the attacker is within 5 feet of you. Otherwise, that attack roll has Disadvantage."
+  },
+  "condition.restrained": {
+    "title": "Restrained condition",
+    "text": "Your Speed is 0 and can't increase. Attack rolls against you have Advantage, and your attack rolls have Disadvantage. You have Disadvantage on Dexterity saving throws."
+  },
+  "condition.stunned": {
+    "title": "Stunned condition",
+    "text": "You have the Incapacitated condition. You automatically fail Strength and Dexterity saving throws. Attack rolls against you have Advantage."
+  },
+  "condition.unconscious": {
+    "title": "Unconscious condition",
+    "text": "You have the Incapacitated and Prone conditions. Your Speed is 0 and can't increase. Attack rolls against you have Advantage. You automatically fail Strength and Dexterity saving throws. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you."
+  },
+  "rulePenalty": {
+    "title": "Penalty",
+    "showSource": true,
+    "text": "A penalty from an effect on the creature, such as a spell or condition. Each source and its rule are listed below."
   }
 }

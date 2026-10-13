@@ -2,6 +2,22 @@
 
 Versions follow [Semantic Versioning](https://semver.org): MAJOR for breaking changes, MINOR for new features, PATCH for fixes.
 
+## 1.5.0 - 2026-10-13
+
+### Fixed
+- A skill bonus written as a formula (Thaumaturge: Wisdom modifier, minimum +1) showed +1 instead of its real value. Formulas inside formulas are now resolved fully.
+- A false "Added after the roll was set up" row appeared when a roll held a bracketed bonus such as "(max(1,3))". The check now counts every flat part of the roll.
+
+### New
+- Every bonus or penalty from an effect names the effect and where it came from, for example "Penalty: Slivered, from (caster)'s Mind Sliver", followed by the rule sentence from the effect or the spell, the amount in words for formulas, and how long it lasts.
+- Conditions behind advantage or disadvantage show their 2024 Player's Handbook rule text.
+- Timing warnings: an effect that applies to one roll only ("the next saving throw") says so and asks to be removed after the roll; a second roll that still finds it is warned; an effect applied by the same casting whose save is being rolled is flagged as applied too early; an effect past its duration is flagged.
+- "Error" and "Unclear" buttons under every breakdown. A report can mark lines and add a comment. It goes to the GM's roll log; with no GM online it waits in the player's browser and is sent when a GM connects. World setting "Error and Unclear buttons", on by default.
+- GM window "Roll Lessons reports" (module settings) lists reports with filters, status and a link to the chat message.
+- `qa/roll-lessons-review.js` reads every log file, groups reports by cause, lists rolls the module flagged itself, and marks reports fixed.
+- Roll log: each write is a new file in a folder per day (`Data/roll-lessons-logs/YYYY-MM-DD/`), with no limit per day. Files from earlier versions are still read. Old logs are deleted by hand; browsers cannot delete files through Foundry.
+- Test bench: new "effects" phase (spell penalty with source, formula skill bonus, Bless, Poisoned, timing warnings) and checks for batch logs and reports.
+
 ## 1.4.0 - 2026-10-12
 
 ### Fixed
@@ -20,7 +36,7 @@ Versions follow [Semantic Versioning](https://semver.org): MAJOR for breaking ch
 ## 1.3.0
 
 ### Fixed
-- Damage rolled through the roll window no longer shows "Source not found". Rage and ability modifiers that the window turns into plain numbers keep their labels (player 1 's Halberd and Handaxe +4, Player 2's Warhammer +3).
+- Damage rolled through the roll window no longer shows "Source not found". Rage and ability modifiers that the window turns into plain numbers keep their labels.
 - A hit point setting (Tough) is no longer shown as a damage source.
 - Rows with no source are replaced by Player's Handbook matching: a plain number is matched to the sources the rules allow for that roll type, including two sources merged into one number.
 
