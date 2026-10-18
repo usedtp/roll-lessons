@@ -5,6 +5,8 @@ import { injectPanels, onRulesLoaded } from "./render.mjs";
 import { logMessage, flushLog, LOG_DIR, isWriter, readAllLogs, readReportStatus, setReportStatus, listLogFiles } from "./log.mjs";
 import { markUsed } from "./effects.mjs";
 import { registerReports, sendReport, buildReport } from "./report.mjs";
+import { injectApplyCheck, registerApply } from "./apply.mjs";
+import { registerTodo } from "./gm-todo.mjs";
 import { registerReportsMenu, ReportsApp } from "./reports-app.mjs";
 import { review } from "./review.mjs";
 
@@ -14,6 +16,7 @@ Hooks.once("init", () => {
   Hooks.on("dnd5e.postRollConfiguration", onPostRollConfiguration);
   Hooks.on("dnd5e.preConfigureInitiative", onPreConfigureInitiative);
   Hooks.on("dnd5e.renderChatMessage", injectPanels);
+  Hooks.on("dnd5e.renderChatMessage", injectApplyCheck);
   Hooks.on("createChatMessage", logMessage);
   Hooks.on("createChatMessage", message => { if (cfg.enabled) markUsed(message, isWriter); });
   Hooks.on(`${MODULE_ID}.rulesLoaded`, onRulesLoaded);
@@ -37,6 +40,8 @@ Hooks.once("ready", () => {
     ui.notifications.warn(game.i18n.localize("ROLLLESSONS.warn.system"));
   }
   registerReports();
+  registerApply();
+  registerTodo();
 });
 
 /** Labelled roll parts per roll process, so rebuilt configs keep their sources. Garbage collected with the process. */

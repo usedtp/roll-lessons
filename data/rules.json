@@ -18,12 +18,12 @@
   },
   "mod.attack": {
     "title": "{ability} modifier",
-    "text": "Attack rolls add the ability modifier the weapon or spell uses. The {ability} modifier here is {mod}.",
+    "text": "An attack roll adds the modifier of the ability the attack uses. The {ability} modifier here is {mod}.",
     "titleFallback": "Ability modifier"
   },
   "mod.damage": {
     "title": "{ability} modifier",
-    "text": "Damage usually adds the same ability modifier as the attack roll. The {ability} modifier here is {mod}.",
+    "text": "Damage adds the same ability modifier as the attack roll. The {ability} modifier here is {mod}.",
     "titleFallback": "Ability modifier"
   },
   "mod.initiative": {
@@ -339,5 +339,105 @@
     "title": "Penalty",
     "showSource": true,
     "text": "A penalty from an effect on the creature, such as a spell or condition. Each source and its rule are listed below."
+  },
+  "mod.save": {
+    "title": "{ability} modifier",
+    "titleFallback": "Ability modifier",
+    "text": "A saving throw adds the modifier of the ability it is named for. The {ability} score of {score} gives {mod}: (score - 10) divided by 2, rounded down."
+  },
+  "mod.concentration": {
+    "title": "{ability} modifier",
+    "titleFallback": "Ability modifier",
+    "text": "Concentration is kept with a Constitution saving throw, which adds the Constitution modifier. The score of {score} gives {mod}: (score - 10) divided by 2, rounded down."
+  },
+  "prof.none.save": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "You add your Proficiency Bonus to a saving throw only if you have proficiency in that kind of save. This creature does not, so nothing is added."
+  },
+  "prof.none.concentration": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "You add your Proficiency Bonus to a saving throw only if you have proficiency in that kind of save. This creature does not, so nothing is added."
+  },
+  "prof.none.skill": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "A skill check adds the Proficiency Bonus only if the creature is proficient in that skill. This creature is not, so nothing is added."
+  },
+  "prof.none.tool": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "A tool check adds the Proficiency Bonus only if the creature is proficient with that tool. This creature is not, so nothing is added."
+  },
+  "prof.none.check": {
+    "title": "No proficiency",
+    "showSource": true,
+    "text": "A plain ability check, with no skill or tool, adds no Proficiency Bonus."
+  },
+  "abilityWhy.melee": {
+    "title": "Melee weapon",
+    "text": "A melee weapon attack uses Strength."
+  },
+  "abilityWhy.ranged": {
+    "title": "Ranged weapon",
+    "text": "A ranged weapon attack uses Dexterity."
+  },
+  "abilityWhy.finesse": {
+    "title": "Finesse",
+    "text": "A Finesse weapon lets you use Strength or Dexterity, here {ability}. The same modifier is used for attack and damage."
+  },
+  "abilityWhy.thrown": {
+    "title": "Thrown",
+    "text": "A thrown melee weapon uses the same ability as a melee attack with it."
+  },
+  "abilityWhy.spell": {
+    "title": "Spellcasting",
+    "text": "This attack uses the spellcasting ability, {ability}."
+  },
+  "abilityWhy.set": {
+    "title": "Set on the attack",
+    "text": "This attack is set to use {ability}."
+  },
+  "abilityWhy.effect": {
+    "title": "Changed by an effect",
+    "text": "An effect on this weapon changes which ability it uses. It is explained below."
+  },
+  "mod.missing": {
+    "title": "No ability modifier",
+    "showSource": true,
+    "text": "An attack roll adds an ability modifier: Strength for melee weapons, Dexterity for ranged weapons, the spellcasting ability for spells."
+  },
+  "mastery.cleave": {
+    "title": "Cleave",
+    "text": "If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon's damage, but don't add your ability modifier to that damage unless that modifier is negative. You can make this extra attack only once per turn."
+  },
+  "mastery.graze": {
+    "title": "Graze",
+    "text": "If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon, and the damage can be increased only by increasing the ability modifier."
+  },
+  "mastery.nick": {
+    "title": "Nick",
+    "text": "When you make the extra attack of the Light property, you can make it as part of the Attack action instead of as a Bonus Action. You can make this extra attack only once per turn."
+  },
+  "mastery.push": {
+    "title": "Push",
+    "text": "If you hit a creature with this weapon, you can push the creature up to 10 feet straight away from yourself if it is Large or smaller."
+  },
+  "mastery.sap": {
+    "title": "Sap",
+    "text": "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn."
+  },
+  "mastery.slow": {
+    "title": "Slow",
+    "text": "If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn. If the creature is hit more than once by weapons that have this property, the Speed reduction doesn't exceed 10 feet."
+  },
+  "mastery.topple": {
+    "title": "Topple",
+    "text": "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw (DC 8 plus the ability modifier used to make the attack roll and your Proficiency Bonus). On a failed save, the creature has the Prone condition."
+  },
+  "mastery.vex": {
+    "title": "Vex",
+    "text": "If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn."
   }
 }

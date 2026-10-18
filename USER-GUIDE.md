@@ -39,19 +39,21 @@ Open Game Settings, Configure Settings, Roll Lessons.
 | Enable Roll Lessons | World | On | Turns breakdowns on or off. Only rolls made after enabling carry a breakdown. |
 | Who sees the breakdown | World | Everyone | Everyone, or GM only. |
 | Detail level | Each user | Beginner | Beginner shows rule text. Advanced shows labels and values only. |
-| Open breakdowns by default | Each user | Off | Expands each panel automatically. |
+| Open breakdowns by default | Each user | On | Shows each panel open under its roll. |
 | Custom rule text (JSON) | World | Empty | Overrides wording. Applies on save, also to old messages. |
 | Debug logging | Each user | Off | Writes roll details to the browser console. |
 | Roll log | World, GM only | On | Saves every roll's breakdown to `Data/roll-lessons-logs/YYYY-MM-DD/`, a new file every 30 seconds while rolls are made, written by the GM's browser. Reports are saved even when this is off. |
 | Hide damage that can only be 0 | World | On | Hides damage rolls with no dice and no bonus (for example True Strike's extra Radiant damage below level 5) from chat cards and breakdowns. The roll is kept in the data. |
 | Error and Unclear buttons | World | On | Shows the report buttons under every breakdown. |
+| GM to-do bar | World | On | Orange bar at the top of the GM's screen listing what the GM still needs to apply, each with a fix button. |
+| Effect check on spell and feature cards | World | On | Says when an effect from a spell or feature card never reached the creature it is for, and applies it with one click. |
 | Roll Lessons reports | GM only | Button | Opens the list of Error and Unclear reports. |
 
 ## Reading a panel
 
 Click "How this total was built" under a roll. The panel content is built the first time you open it.
 
-- Die: the d20 result that counted, plus any dropped die from advantage or disadvantage.
+- d20 roll: the d20 result that counted, plus any dropped die from advantage or disadvantage.
 - Advantage or Disadvantage box: lists the effects found that cause it. If none is found, the panel says dnd5e did not report a reason. It may have been picked in the roll dialog or with a held key.
 - Modifier rows: one per modifier, with the signed value, its name, and the rule text. Examples: ability modifier, proficiency bonus, Expertise (proficiency counted double), half proficiency, magic weapon bonus, cover, condition penalties, situational bonus.
 - Rows in italics: a value the module could not name. The number is still correct.
@@ -72,6 +74,12 @@ Click "How this total was built" under a roll. The panel content is built the fi
 - Natural 1 box: appears when an attack rolls a natural 1, which always misses.
 - Critical hit box: appears on critical attacks and damage, with the critical damage rule.
 - Target number: shown when the roll has a DC or AC target.
+- Ability modifier rows on attacks and damage say why that ability is used: melee weapons use Strength, ranged weapons Dexterity, Finesse weapons the higher of the two, spells the spellcasting ability, or an effect such as True Strike.
+- "No ability modifier": dnd5e added none to an attack. The row names the expected modifier; check the ability chosen in the roll window.
+- Save against a spell: which ability the spell calls for, what a saving throw and a DC are, how the DC is built, and what the result means for the creature (resists, half damage, or the effect happens).
+- Not applied: an effect on the creature that would change this roll but is turned off, expired or suppressed, such as Rage after it ends.
+- Weapon Mastery: the mastery property's rule, and a warning when no Weapon Mastery feature or Weapon Master feat grants it.
+- How to fix: every warning is followed by a green line with the steps that correct it.
 - Total: the final result.
 - Error and Unclear buttons: see Reports below.
 
@@ -120,6 +128,27 @@ The module does no work between rolls. It runs once when a roll is configured an
 - Attacks: Hit or Miss against each target's Armor Class.
 - Saves against a spell or ability: how the DC is built (8 + spellcasting modifier + Proficiency Bonus), Succeeded or Failed, and what the spell says happens. This also appears on the one-line save results inside spell cards.
 - Damage: each target's Resistance, Immunity or Vulnerability to the damage type, its source, and the damage taken.
+
+## Effect check on spell and feature cards
+
+dnd5e applies a card's effects (Rage, Mage Armor, Bless, Shield) only when someone clicks Apply in the card, only to the selected tokens, and it skips creatures the clicking player doesn't own. When an effect is not applied, its modifiers never count: Mage Armor's Armor Class, Bless's 1d4, Rage Damage.
+
+Under each such card, the GM and the player who used it see a box when:
+- the effect is not on a creature it is for;
+- it is on the creature but turned off;
+- a hand-made copy with the same name changes nothing;
+- no target was selected, so it reached no one.
+
+The box says what the effect changes and has buttons: "Apply to (creatures)", "Apply to my targets" (target each creature first: hover over its token and press T), and, for touch spells such as Mage Armor, "Apply to (caster)". Creatures the player doesn't own are applied by the GM's browser, so a GM must be online. The box disappears once the effects are on, and is checked for as long as the effect lasts (at least an hour).
+
+## GM to-do bar
+
+dnd5e leaves several things for someone to apply by hand: effects from spell and feature cards, and damage and healing. When nobody does, the numbers are wrong without anyone noticing. The GM sees an orange bar at the top of the screen, plus a notice, whenever something needs applying:
+- an effect from a spell or feature card (Rage, Mage Armor, Bless, Shield) that is not on its creature 20 seconds after the card, or a card used with no target;
+- damage or healing rolled against a target whose hit points have not changed 45 seconds later;
+- an effect that is turned off but would have changed a roll just made, such as Rage.
+
+Click the bar to open it. Each item says what is wrong, why it matters, and has buttons: Apply, Apply to my targets, Apply full damage, Apply half damage, Apply healing, Turn on, Show message, Dismiss. An item disappears once it is fixed. Only the GM sees the bar; with more than one GM online, the active GM gets it.
 
 ## Reports
 

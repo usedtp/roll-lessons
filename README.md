@@ -46,12 +46,14 @@ Open **Game Settings**, **Configure Settings**, **Roll Lessons**.
 | Enable Roll Lessons | On | Turns breakdowns on or off |
 | Who sees the breakdown | Everyone | Everyone, or GM only |
 | Detail level | Beginner | Beginner shows rule text. Advanced shows labels and values |
-| Open breakdowns by default | Off | Expands each panel automatically |
+| Open breakdowns by default | On | Shows each panel open under its roll |
 | Custom rule text (JSON) | Empty | Overrides the wording of any rule |
 | Debug logging | Off | Writes roll details to the browser console |
 | Roll log (GM) | On | Saves every roll's breakdown and every report to `Data/roll-lessons-logs/`, one folder per day |
 | Hide damage that can only be 0 | On | Hides damage rolls that can only total 0, such as True Strike's extra damage below level 5 |
 | Error and Unclear buttons | On | Shows the report buttons under every breakdown |
+| GM to-do bar | On | Orange bar at the top of the GM's screen listing effects, damage and healing that still need applying, each with a fix button |
+| Effect check on spell and feature cards | On | Says when an effect (Rage, Mage Armor, Bless) never reached its creature, and applies it with one click |
 | Roll Lessons reports (GM) | Button | Opens the list of reports |
 
 Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).

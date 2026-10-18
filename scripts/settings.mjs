@@ -5,11 +5,13 @@ export const cfg = {
   enabled: true,
   visibility: "all",
   detail: "beginner",
-  expanded: false,
+  expanded: true,
   debug: false,
   rollLog: true,
   hideZeroDamage: true,
-  reportButtons: true
+  reportButtons: true,
+  effectCheck: true,
+  gmTodo: true
 };
 
 export function registerSettings(onRulesChange) {
@@ -32,12 +34,14 @@ export function registerSettings(onRulesChange) {
     scope: "client", type: String, default: "beginner",
     choices: { beginner: "ROLLLESSONS.settings.detail.beginner", advanced: "ROLLLESSONS.settings.detail.advanced" }
   });
-  reg("expanded", { scope: "client", type: Boolean, default: false });
+  reg("expanded", { scope: "client", type: Boolean, default: true });
   reg("customRules", { scope: "world", type: String, default: "", onChange: () => onRulesChange?.() });
   reg("debug", { scope: "client", type: Boolean, default: false });
   reg("rollLog", { scope: "world", type: Boolean, default: true, restricted: true });
   reg("hideZeroDamage", { scope: "world", type: Boolean, default: true });
   reg("reportButtons", { scope: "world", type: Boolean, default: true });
+  reg("effectCheck", { scope: "world", type: Boolean, default: true });
+  reg("gmTodo", { scope: "world", type: Boolean, default: true });
 }
 
 /** Read all cached values. Called once settings storage is fully loaded. */

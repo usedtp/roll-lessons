@@ -90,11 +90,12 @@ const KIND_WORDS = {
   check: /ability checks?|\bchecks?\b/i,
   skill: /ability checks?|\bchecks?\b/i,
   tool: /ability checks?|\bchecks?\b|tool/i,
-  initiative: /initiative/i
+  initiative: /initiative/i,
+  abilitySwap: /spellcasting ability|instead of (using )?(Strength|Dexterity)|ability modifier/i
 };
 
 /** Words that say a roll is changed. */
-const CHANGE_WORDS = /\b(bonus|penalty|subtract|add|adds|reduce[ds]?|increase[ds]?|minus|plus|advantage|disadvantage)\b/i;
+const CHANGE_WORDS = /\b(bonus|penalty|subtract|add|adds|reduce[ds]?|increase[ds]?|minus|plus|advantage|disadvantage|instead)\b/i;
 
 /** A sentence that limits the effect to one roll: "the next saving throw it makes". */
 export const NEXT_ROLL = /\bnext\s+(?:\w+\s+){0,2}?(saving throw|save|attack roll|attack|ability check|check|d20 test)\b/i;

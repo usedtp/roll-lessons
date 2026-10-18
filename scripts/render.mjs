@@ -33,7 +33,7 @@ function row(value, label, text, unknown, lines) {
   const body = el("div");
   body.append(el("div", "rl-label", label));
   if (text) body.append(el("div", "rl-text", text));
-  for (const line of lines ?? []) body.append(el("div", line.warn ? "rl-warn" : "rl-ex", line.text));
+  for (const line of lines ?? []) body.append(el("div", line.fix ? "rl-fix" : line.warn ? "rl-warn" : "rl-ex", line.text));
   r.append(body);
   return r;
 }
@@ -44,21 +44,30 @@ const fmtV = v => (typeof v === "number" ? signed(v) : String(v));
  * Lines under a row for each effect behind it: the rule sentence, the amount in words, the duration,
  * and timing warnings. `early` holds the save's activity and item, to spot an effect applied too soon.
  */
-function exLines(list, early) {
+/** "How to fix" line for a warning, with concrete steps. */
+const fixLine = (key, data) => ({ fix: true, text: game.i18n.format(`ROLLLESSONS.fix.${key}`, data) });
+
+function exLines(list, early, extra, who) {
   const lines = [];
   for (const ex of list ?? []) {
-    const head = list.length > 1 ? `${exLabel(ex)}${ex.v !== undefined ? ` (${fmtV(ex.v)})` : ""}: ` : "";
+    // Name the effect unless the row label already does.
+    const named = list.length === 1 && extra && String(extra).includes(ex.n);
+    const head = named ? "" : `${exLabel(ex)}${list.length > 1 && ex.v !== undefined ? ` (${fmtV(ex.v)})` : ""}: `;
     let text = `${head}${ex.s ?? t("panel.noSentence")}`;
     if (ex.f) text += ` ${game.i18n.format("ROLLLESSONS.panel.amount", { formula: ex.f })}`;
     if (ex.d) text += ` ${game.i18n.format("ROLLLESSONS.panel.duration", { duration: ex.d })}`;
     lines.push({ text });
+    if (!ex.s) lines.push(fixLine("noSentence", { name: ex.n }));
     const warns = [...(ex.w ?? [])];
     const tooSoon = early ? appliedEarly(ex, early) : false;
     if (tooSoon === "yes") warns.splice(0, warns.length, "early", ...warns.filter(w => w === "expired"));
     else if (tooSoon) warns.unshift("earlyMaybe");
     for (const w of warns) {
       const key = { once: "warnOnce", used: "warnUsed", expired: "warnExpired", early: "warnEarly", earlyMaybe: "warnEarlyMaybe" }[w];
-      if (key) lines.push({ warn: true, text: game.i18n.format(`ROLLLESSONS.panel.${key}`, { name: ex.n, source: early?.name ?? ex.o ?? "" }) });
+      if (key) {
+        lines.push({ warn: true, text: game.i18n.format(`ROLLLESSONS.panel.${key}`, { name: ex.n, source: early?.name ?? ex.o ?? "" }) });
+        lines.push(fixLine(w, { name: ex.n, who: who || "the creature" }));
+      }
     }
   }
   return lines;
@@ -95,7 +104,10 @@ function note(title, lines) {
   const n = el("div", "rl-note");
   n.append(el("div", "rl-note-title", title));
   const ul = el("ul");
-  for (const line of lines) ul.append(el("li", "", line));
+  for (const line of lines) {
+    if (line && typeof line === "object") ul.append(el("li", line.fix ? "rl-fix" : line.warn ? "rl-warn" : "", line.text));
+    else ul.append(el("li", "", line));
+  }
   n.append(ul);
   return n;
 }
@@ -160,11 +172,46 @@ function saveOutcomeText(item) {
 }
 
 /** Save against a spell or ability: how the DC was built, the result, and what it means. */
-function saveNotes(message, roll, body) {
+/**
+ * What the save result means for the creature that rolled: half damage, no effect, or the effect happens.
+ * Read from the spell or ability text; "half as much damage" marks a save that still takes half.
+ */
+function saveConsequence(ok, item, who) {
+  const text = plainText(item?.system?.description?.value);
+  const name = item?.name ?? "";
+  if (ok && /half as much damage|half damage/i.test(text)) return game.i18n.format("ROLLLESSONS.panel.saveHalf", { who, item: name });
+  return game.i18n.format(ok ? "ROLLLESSONS.panel.saveResisted" : "ROLLLESSONS.panel.saveTakesEffect", { who, item: name });
+}
+
+function saveNotes(message, roll, body, L) {
   const dc = roll.options?.target;
   if (typeof dc !== "number") return false;
   const activity = docFrom(message?.system?.activity?.uuid);
   const lines = [];
+  const isSave = ["save", "concentration"].includes(L?.k);
+  const who = message?.speaker?.alias ?? "";
+  if (activity && isSave) {
+    const caster = activity.actor;
+    const item = activity.item;
+    const ability = abilityLabel(L?.c?.a ?? activity.save?.ability?.first?.());
+    const calc = activity.save?.dc?.calculation;
+    const abilityId = calc === "spellcasting" ? (item?.system?.ability || caster?.system?.attributes?.spellcasting) : (calc && caster?.system?.abilities?.[calc] ? calc : null);
+    const m = abilityId ? caster?.system?.abilities?.[abilityId]?.mod : null;
+    const p = caster?.system?.attributes?.prof;
+    if (ability && item) lines.push(game.i18n.format("ROLLLESSONS.panel.saveWhyAbility", { item: item.name, ability }));
+    if (cfg.detail === "beginner") lines.push(t("panel.saveWhat"));
+    if (typeof m === "number" && typeof p === "number" && 8 + m + p === dc) {
+      lines.push(game.i18n.format("ROLLLESSONS.panel.dcBuilt", { dc, caster: caster.name, ability: abilityLabel(abilityId), mod: signed(m), prof: signed(p) }));
+    } else if (item) {
+      lines.push(game.i18n.format("ROLLLESSONS.panel.dcSet", { dc, item: item.name }));
+    }
+    const ok = roll.isSuccess ?? roll.total >= dc;
+    lines.push(`${game.i18n.format(ok ? "ROLLLESSONS.panel.saveSucceeded" : "ROLLLESSONS.panel.saveFailed", { total: roll.total, dc })} ${saveConsequence(ok, item, who)}`);
+    const said = saveOutcomeText(item);
+    if (said.length) lines.push(`${game.i18n.format("ROLLLESSONS.panel.spellSays", { item: item?.name ?? "" })} ${said.join(" ")}`);
+    body.append(note(`${t("panel.saveAgainst")} ${item?.name ?? ""}`.trim(), lines));
+    return true;
+  }
   if (activity) {
     const caster = activity.actor;
     const item = activity.item;
@@ -195,7 +242,10 @@ function targetActor(t) {
 /** Attack against each target's Armor Class. */
 function attackNotes(message, roll, body) {
   const targets = message?.system?.targets ?? [];
-  if (!targets.length) return false;
+  if (!targets.length) {
+    body.append(note(t("panel.outcome"), [{ warn: true, text: t("panel.noTarget") }, { fix: true, text: t("fix.noTarget") }]));
+    return true;
+  }
   const die = roll.dice?.[0];
   const natural = die?.total;
   const lines = targets.map(tg => {
@@ -254,6 +304,25 @@ function defenseNotes(message, roll, body) {
   body.append(note(t("panel.defenses"), lines));
 }
 
+/** Weapon Mastery shown on the attack card: the property's rule, and whether a feature grants it. */
+function masteryNote(message, L, body) {
+  const id = message?.system?.mastery;
+  if (!id || !["attack", "damage"].includes(L.k)) return;
+  const d = RuleBook.describe(`mastery.${id}`, {});
+  const actor = docFrom(message?.system?.activity?.uuid)?.actor ?? null;
+  const lines = [];
+  if (d?.text) lines.push(d.text);
+  if (actor) {
+    const from = (actor.items ?? []).filter(i => /^Weapon Master(y)?$/i.test(i.name)).map(i => i.name);
+    if (from.length) lines.push(game.i18n.format("ROLLLESSONS.panel.masteryFrom", { names: from.join(", ") }));
+    else {
+      lines.push({ warn: true, text: game.i18n.format("ROLLLESSONS.panel.masteryNoFeature", { name: actor.name }) });
+      lines.push(fixLine("mastery", { name: actor.name, weapon: docFrom(message?.system?.activity?.uuid)?.item?.name ?? t("fix.thisWeapon") }));
+    }
+  }
+  body.append(note(`${t("panel.mastery")}: ${d?.title ?? id}`, lines));
+}
+
 /** Builds the panel body. Called only when the panel is opened. */
 function buildBody(roll, L, message) {
   const beginner = cfg.detail === "beginner";
@@ -270,10 +339,9 @@ function buildBody(roll, L, message) {
     const kept = res.filter(r => r.active && !r.discarded).map(r => r.result);
     const dropped = res.filter(r => r.discarded || !r.active).map(r => r.result);
     const base = RuleBook.describe(mode === 1 ? "advantage" : mode === -1 ? "disadvantage" : "d20", ctx);
-    let detail = `${t("panel.kept")}: ${kept.join(", ")}`;
-    if (dropped.length) detail += `. ${t("panel.dropped")}: ${dropped.join(", ")}`;
+    let detail = dropped.length ? `${t("panel.kept")}: ${kept.join(", ")}. ${t("panel.dropped")}: ${dropped.join(", ")}` : `${t("panel.rolledDie")}: ${kept.join(", ")}`;
     if (beginner && base?.text) detail += `. ${base.text}`;
-    body.append(row(String(die.total ?? kept[0] ?? "?"), `${t("panel.die")} (d${die.faces})`, detail));
+    body.append(row(String(die.total ?? kept[0] ?? "?"), game.i18n.format("ROLLLESSONS.panel.dieRoll", { faces: die.faces }), detail));
     if (mode !== 0) {
       const names = (mode === 1 ? L.r?.a : L.r?.d) ?? [];
       const lines = names.length ? names.map(reasonLine) : [t("panel.noReason")];
@@ -287,8 +355,18 @@ function buildBody(roll, L, message) {
   for (const [key, value, extra, , ex] of L.i) {
     const d = key ? RuleBook.describe(key, { ...ctx, status: extra, source: extra }) : null;
     if (d && extra && RuleBook.data[key]?.showSource) d.title = `${d.title}: ${extra}`;
-    const lines = ex?.length ? exLines(ex, early) : null;
-    let text = beginner && !lines ? d?.text : "";
+    const lines = ex?.length ? exLines(ex, early, extra, message?.speaker?.alias) : [];
+    const isMod = /^mod\.(attack|damage)$/.test(key ?? "");
+    let text = beginner && (!lines.length || isMod) ? d?.text : "";
+    // Why the attack uses this ability: melee Strength, ranged Dexterity, Finesse, spellcasting, or an effect.
+    if (beginner && isMod && L.c?.ab) {
+      const why = RuleBook.describe(`abilityWhy.${L.c.ab}`, ctx)?.text;
+      if (why) text = [text, why].filter(Boolean).join(" ");
+    }
+    if (key === "mod.missing") {
+      lines.push({ warn: true, text: t("panel.warnNoMod") });
+      lines.push(fixLine("noMod", { expected: String(extra ?? "").replace(/^expected\s*/, "").replace(/\s*[+-]\d+$/, "") || t("fix.theRightAbility") }));
+    }
     if (key && RuleBook.data[key]?.showPart && extra) text = [text, `${t("panel.fromPart")}: ${extra}`].filter(Boolean).join(" ");
     if (typeof value === "number") {
       sum += value;
@@ -369,8 +447,20 @@ function buildBody(roll, L, message) {
 
   if (L.c?.rg !== undefined) {
     const d = RuleBook.describe("rageMissing", { ...ctx, rage: L.c.rg });
-    if (d) body.append(note(d.title, [d.text]));
+    if (d) body.append(note(d.title, [d.text, fixLine("rageMissing", { rage: signed(L.c.rg) })]));
   }
+
+  // Effects that would change this roll but are turned off (Rage that ran out, an unequipped item).
+  if (L.off?.length) {
+    const who = message?.speaker?.alias || t("fix.theCreature");
+    const lines = L.off.flatMap(o => {
+      const what = o.b !== undefined ? game.i18n.format("ROLLLESSONS.panel.offBonus", { value: fmtV(o.b) }) : t(o.m === 1 ? "panel.advantage" : "panel.disadvantage");
+      return [game.i18n.format(`ROLLLESSONS.panel.off_${o.why}`, { name: o.o ? `${o.n} (${o.o})` : o.n, what }), fixLine(`off_${o.why}`, { name: o.n, who })];
+    });
+    body.append(note(t("panel.notApplied"), lines));
+  }
+
+  masteryNote(message, L, body);
 
   // Item-specific note, e.g. "item.magic-missile" in rules.json or the custom rule JSON.
   if (L.c?.id) {
@@ -384,7 +474,7 @@ function buildBody(roll, L, message) {
   }
 
   let outcomeShown = false;
-  if (["save", "concentration", "death", "check", "skill", "tool"].includes(L.k)) outcomeShown = saveNotes(message, roll, body);
+  if (["save", "concentration", "death", "check", "skill", "tool"].includes(L.k)) outcomeShown = saveNotes(message, roll, body, L);
   if (L.k === "attack") outcomeShown = attackNotes(message, roll, body);
   if (L.k === "damage") defenseNotes(message, roll, body);
   if (!outcomeShown && typeof opts.target === "number" && L.k !== "attack") {

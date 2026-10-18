@@ -2,7 +2,7 @@ import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { expectedSources, findCombination } from "./phb.mjs";
 import { resolve, HAS_DICE } from "./text.mjs";
-import { contributors, explainContributors, explainReason, explainEffect, exLabel } from "./effects.mjs";
+import { contributors, explainContributors, explainReason, explainEffect, exLabel, rollFields, normalizeKey, effectOrigin } from "./effects.mjs";
 
 /*
  * Stored format (roll.options.rollLessons), kept small because it is saved in every chat message:
@@ -475,6 +475,11 @@ export function buildLessons(config, rc, kind) {
   noProfRow(lessons, x, kind);
   lessons.pp = parts.map(String);
   if (kind === "damage") rageCheck(config, rc, x, lessons);
+  if (kind === "attack" || kind === "damage") abilityReason(config, rc, x, lessons, kind);
+  try {
+    const off = inactiveEffects(x, kind, state.actionType, rc?.data ?? {});
+    if (off) lessons.off = off;
+  } catch (err) { /* never block a roll */ }
   if (cfg.debug) {
     console.log(`${MODULE_ID} | breakdown`, { kind, hookNames: config?.hookNames, parts: rc?.parts, data: rc?.data, lessons });
   }
@@ -556,9 +561,7 @@ function noProfRow(lessons, x, kind) {
   const label = id => CONFIG.DND5E?.abilities?.[id]?.label ?? id;
   let extra;
   if (kind === "save" || kind === "concentration") {
-    const have = Object.entries(sys.abilities ?? {}).filter(([, a]) => (a.save?.prof?.multiplier ?? a.proficient ?? 0) >= 1).map(([id]) => label(id));
-    const cls = x.actor.items?.find(i => i.type === "class")?.name;
-    extra = have.length ? `proficient in ${have.join(" and ")} saves${cls ? ` (${cls})` : ""}` : "no saving throw proficiencies";
+    extra = `not proficient in ${label(x.abilityId ?? "con")} saving throws`;
   } else if (kind === "skill") {
     extra = `not proficient in ${CONFIG.DND5E?.skills?.[x.skill]?.label ?? x.skill}`;
   } else if (kind === "tool") {
@@ -566,7 +569,92 @@ function noProfRow(lessons, x, kind) {
   } else {
     extra = "plain ability checks add no proficiency";
   }
-  lessons.i.push(["prof.none", 0, extra, "l"]);
+  lessons.i.push([RuleBook.pick([`prof.none.${kind}`, "prof.none"]) ?? "prof.none", 0, extra, "l"]);
+}
+
+/* ---------- Which ability an attack uses, and why (2024 PHB, Attack Roll Abilities) ---------- */
+
+const ABILITY_CHANGE = /attack\.ability$/;
+
+/** An enchantment on the weapon that changes the attack's ability, such as True Strike. */
+function abilityEnchantment(item) {
+  return [...(item?.effects ?? [])].find(e => e.type === "enchantment" && !e.disabled && e.active !== false
+    && (e.changes ?? []).some(c => ABILITY_CHANGE.test(String(c.key)))) ?? null;
+}
+
+/**
+ * Records why the attack uses its ability (c.ab), explains an enchantment that swapped it, and adds a
+ * warning row when dnd5e added no ability modifier to an attack at all.
+ */
+function abilityReason(config, rc, x, lessons, kind) {
+  const sub = config?.subject;
+  const item = x.item;
+  const ench = abilityEnchantment(item);
+  const set = sub?.attack?.ability;
+  let code = null;
+  if (ench) code = "effect";
+  else if (set && set !== "none") code = set === "spellcasting" ? "spell" : "set";
+  else if (item?.type === "spell" || sub?.attack?.type?.classification === "spell") code = "spell";
+  else if (item?.type === "weapon") {
+    const ranged = ["simpleR", "martialR"].includes(item.system?.type?.value);
+    const mode = rc?.options?.attackMode ?? config?.attackMode;
+    if (item.system?.properties?.has?.("fin")) code = "finesse";
+    else if (ranged) code = "ranged";
+    else if (mode === "thrown") code = "thrown";
+    else code = "melee";
+  }
+  if (code) lessons.c.ab = code;
+  const modItem = lessons.i.find(i => /^mod\./.test(i[0] ?? "") || i[0] === "mod");
+  if (ench && modItem) {
+    while (modItem.length < 4) modItem.push(undefined);
+    modItem[3] ??= "l";
+    modItem[4] = [...(modItem[4] ?? []), explainEffect(ench, x.actor, { kind: "abilitySwap" })];
+  }
+  if (modItem || kind !== "attack" || sub?.attack?.flat) return;
+  const abl = x.actor?.system?.abilities ?? {};
+  let want = null;
+  if (code === "effect" || code === "spell") want = x.actor?.system?.attributes?.spellcasting || null;
+  else if (code === "finesse") want = (abl.dex?.mod ?? 0) > (abl.str?.mod ?? 0) ? "dex" : "str";
+  else if (code === "ranged") want = "dex";
+  else if (code === "melee" || code === "thrown") want = "str";
+  const label = want ? (CONFIG.DND5E?.abilities?.[want]?.label ?? want) : null;
+  const mod = want ? abl[want]?.mod : undefined;
+  const extra = label ? `expected ${label}${typeof mod === "number" ? ` ${mod >= 0 ? "+" : ""}${mod}` : ""}` : undefined;
+  lessons.i.unshift(["mod.missing", 0, extra, "l"]);
+}
+
+/**
+ * Effects on the creature that would change this roll but are turned off (disabled, expired or suppressed),
+ * so the panel can say why a bonus the player expects (such as Rage Damage) is missing.
+ */
+function inactiveEffects(x, kind, actionType, data) {
+  const actor = x.actor;
+  if (!actor) return null;
+  const fields = rollFields(kind, x, actionType);
+  if (!fields.length) return null;
+  const bonus = fields.map(p => `system.${p}.bonus`);
+  const modes = fields.map(p => `system.${p}.mode`);
+  const list = typeof actor.allApplicableEffects === "function" ? [...actor.allApplicableEffects()] : [...(actor.effects ?? [])];
+  const out = [];
+  for (const e of list) {
+    if (e.active !== false && !e.disabled && !e.isSuppressed) continue;
+    let b;
+    let m;
+    for (const ch of e.changes ?? []) {
+      const key = normalizeKey(ch.key);
+      if (bonus.includes(key) && b === undefined) b = resolve(String(ch.value ?? "").replace(/^\+\s*/, ""), data);
+      else if (modes.includes(key) && !m) { const v = Number(ch.value); if (v === 1 || v === -1) m = v; }
+    }
+    if (b === undefined && !m) continue;
+    const off = { n: e.name, why: e.duration?.expired ? "expired" : e.isSuppressed && !e.disabled ? "suppressed" : "off" };
+    if (e.uuid) off.u = e.uuid;
+    const o = effectOrigin(e, actor).text;
+    if (o) off.o = o;
+    if (b !== undefined) off.b = b;
+    if (m) off.m = m;
+    out.push(off);
+  }
+  return out.length ? out : null;
 }
 
 /**

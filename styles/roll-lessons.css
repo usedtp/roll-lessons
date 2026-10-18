@@ -223,3 +223,116 @@
   outline: 2px solid #c8780f;
   outline-offset: -2px;
 }
+
+/* 1.5.1: concrete steps under a warning. */
+.roll-lessons .rl-fix {
+  margin-top: 0.1rem;
+  padding: 0.1rem 0.3rem;
+  border-left: 3px solid #2f7d4f;
+  background: #2f7d4f1a;
+}
+
+.roll-lessons .rl-note li.rl-warn,
+.roll-lessons .rl-note li.rl-fix {
+  list-style: none;
+  margin-left: -1rem;
+}
+
+/* 1.5.1: effect check under spell and feature cards. */
+.rl-apply {
+  margin: 0.4rem 0 0.2rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #c8780f;
+  border-radius: 5px;
+  font-size: var(--font-size-12, 12px);
+}
+
+.rl-apply p {
+  margin: 0.15rem 0;
+}
+
+.rl-apply .rl-apply-title {
+  font-weight: 700;
+}
+
+.rl-apply .rl-warn {
+  padding: 0.1rem 0.3rem;
+  border-left: 3px solid #c8780f;
+  background: #c8780f1f;
+}
+
+.rl-apply .rl-fix {
+  padding: 0.1rem 0.3rem;
+  border-left: 3px solid #2f7d4f;
+  background: #2f7d4f1a;
+}
+
+.rl-apply button {
+  width: auto;
+  margin: 0.2rem 0.3rem 0 0;
+  line-height: 1.4;
+}
+
+/* 1.5.1: GM to-do bar. */
+#rl-gm-todo {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: min(640px, 90vw);
+  font-size: 13px;
+}
+
+#rl-gm-todo .rl-todo-head {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid #8a4f05;
+  border-radius: 6px;
+  background: #e8891a;
+  color: #1b1003;
+  font-weight: 700;
+  cursor: pointer;
+  animation: rl-pulse 2s ease-in-out 3;
+}
+
+#rl-gm-todo .rl-todo-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding: 0.4rem;
+  border: 1px solid #8a4f05;
+  border-radius: 6px;
+  background: #fff8ee;
+  color: #1b1003;
+}
+
+#rl-gm-todo .rl-todo-item {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid #e3c9a3;
+}
+
+#rl-gm-todo .rl-todo-item:last-child {
+  border-bottom: none;
+}
+
+#rl-gm-todo .rl-todo-item p {
+  margin: 0.15rem 0;
+}
+
+#rl-gm-todo .rl-todo-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+#rl-gm-todo .rl-todo-buttons button {
+  width: auto;
+  line-height: 1.4;
+}
+
+@keyframes rl-pulse {
+  50% { box-shadow: 0 0 0 6px #e8891a66; }
+}

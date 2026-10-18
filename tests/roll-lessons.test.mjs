@@ -13,14 +13,14 @@ globalThis.foundry = { utils: {
 globalThis.Hooks = { callAll: (n, s) => hooks.push([n, s]), on() {}, once() {} };
 const notices = [];
 globalThis.ui = { notifications: { warn() {}, info: m => notices.push(m) } };
-globalThis.CONFIG = { DND5E: { abilities: { int: { label: "Intelligence" }, wis: { label: "Wisdom" } }, skills: { arc: { label: "Arcana" } } } };
+globalThis.CONFIG = { DND5E: { abilities: { int: { label: "Intelligence" }, wis: { label: "Wisdom" }, cha: { label: "Charisma" }, dex: { label: "Dexterity" }, str: { label: "Strength" } }, skills: { arc: { label: "Arcana" } } } };
 const store = new Map();
 globalThis.localStorage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) };
 const uuids = new Map();
 globalThis.fromUuidSync = u => uuids.get(u) ?? null;
 // Node 22 provides navigator.userAgent.
 globalThis.game = {
-  modules: { get: () => ({ version: "1.5.0" }) },
+  modules: { get: () => ({ version: "1.5.1" }) },
   settings: { get: () => "" },
   i18n: { localize: k => k, format: (k, d) => `${k} ${JSON.stringify(d)}` },
   user: { id: "player1", name: "test", isGM: false }, users: { activeGM: null }, version: "14.369", system: { version: "6.0.6" },
@@ -34,7 +34,7 @@ globalThis.fetch = async url => {
 };
 globalThis.Roll = class {
   constructor(f) { this.f = f; }
-  static replaceFormulaData(f, data) { return f.replace(/@([\w.]+)/g, (_, p) => String(p.split(".").reduce((c, x) => c?.[x], data) ?? 0)); }
+  static replaceFormulaData(f, data) { return f.replace(/@([\w.-]+)/g, (_, p) => String(p.split(".").reduce((c, x) => c?.[x], data) ?? 0)); }
   static safeEval(f) { return Function("max", "min", "floor", "ceil", `return (${f})`)(Math.max, Math.min, Math.floor, Math.ceil); }
   evaluateSync() { return { total: Roll.safeEval(this.f) }; }
 };
@@ -45,6 +45,7 @@ const { isEmptyRoll, flatTotal, diceSigns } = await import("../scripts/render.mj
 const { signedDiceTotal, batchPath } = await import("../scripts/log.mjs");
 const { resolve, describeFormula, pickSentence, conditionClauses, plainText } = await import("../scripts/text.mjs");
 const { appliedEarly, normalizeKey, explainReason } = await import("../scripts/effects.mjs");
+const { effectState } = await import("../scripts/apply.mjs");
 const report = await import("../scripts/report.mjs");
 const { review } = await import("../scripts/review.mjs");
 
@@ -55,7 +56,7 @@ const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), `${m}: ${JSO
 // Rule book loading
 fetchPlan = ["ok"];
 ok(await RuleBook.load() === true && RuleBook.status.state === "ok", "rules load");
-ok(fetched.at(-1).endsWith("rules.json?v=1.5.0"), `cache-busting url ${fetched.at(-1)}`);
+ok(fetched.at(-1).endsWith("rules.json?v=1.5.1"), `cache-busting url ${fetched.at(-1)}`);
 ok(RuleBook.status.count > 50 && "cantripUpgrade" in RuleBook.data, "rules count and new key");
 ok(hooks.some(([n, s]) => n === "roll-lessons.rulesLoaded" && s.state === "ok"), "rulesLoaded hook");
 fetchPlan = ["404", "ok"];
@@ -109,32 +110,32 @@ eq(normalizeKey("system.skills.arc.bonuses.check"), "system.skills.arc.roll.bonu
 eq(normalizeKey("system.abilities.int.bonuses.save"), "system.abilities.int.save.roll.bonus", "legacy ability save key");
 
 // 1.5.0: effect attribution. Fixture text is written for the test, not quoted from a book.
-const cyrus = { documentName: "Actor", name: "Cyrus", uuid: "Actor.cyrus", id: "cyrus" };
+const kara = { documentName: "Actor", name: "Kara", uuid: "Actor.kara", id: "kara" };
 const sliverText = "<p>You try to sliver the mind of one creature you can see within range. The target must succeed on an Intelligence saving throw or take 1d6 Psychic damage and subtract 1d4 from the next saving throw it makes before the end of your next turn.</p><p><strong>Cantrip Upgrade.</strong> The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6).</p>";
-const msItem = { documentName: "Item", name: "Mind Sliver", uuid: "Actor.cyrus.Item.ms", actor: cyrus, system: { description: { value: sliverText }, properties: new Set() } };
-const msAct = { documentName: "Activity", uuid: "Actor.cyrus.Item.ms.Activity.save1", item: msItem };
+const msItem = { documentName: "Item", name: "Mind Sliver", uuid: "Actor.kara.Item.ms", actor: kara, system: { description: { value: sliverText }, properties: new Set() } };
+const msAct = { documentName: "Activity", uuid: "Actor.kara.Item.ms.Activity.save1", item: msItem };
 uuids.set(msAct.uuid, msAct);
-const alwen = { documentName: "Actor", name: "Alwen", uuid: "Actor.alwen", id: "alwen", items: [],
+const mara = { documentName: "Actor", name: "Mara", uuid: "Actor.mara", id: "mara", items: [],
   system: { abilities: { int: { mod: 3, save: { prof: { multiplier: 0 } }, check: { prof: { multiplier: 0 } } }, wis: { mod: 3 } }, skills: { arc: { prof: { multiplier: 0 } } }, attributes: { prof: 2 } },
   appliedEffects: [] };
-const slivered = { name: "Slivered", uuid: "Actor.alwen.ActiveEffect.sl", origin: msAct.uuid, description: "", duration: { value: 1, units: "rounds" },
+const slivered = { name: "Slivered", uuid: "Actor.mara.ActiveEffect.sl", origin: msAct.uuid, description: "", duration: { value: 1, units: "rounds" },
   changes: [{ key: "system.bonuses.abilities.save", type: "add", value: "-1d4" }], statuses: new Set(), _stats: { createdTime: 2000 }, flags: {} };
-const order = { documentName: "Item", name: "Divine Order", uuid: "Actor.alwen.Item.do", actor: alwen, system: { properties: new Set(), description: { value: "<p>Thaumaturge. You know one extra cantrip from the Cleric spell list. In addition, your mystical connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1).</p>" } } };
-const thaum = { name: "Thaumaturge", uuid: "Actor.alwen.Item.do.ActiveEffect.th", parent: order, description: "", duration: {}, statuses: new Set(), flags: {},
+const order = { documentName: "Item", name: "Divine Order", uuid: "Actor.mara.Item.do", actor: mara, system: { properties: new Set(), description: { value: "<p>Thaumaturge. You know one extra cantrip from the Cleric spell list. In addition, your mystical connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1).</p>" } } };
+const thaum = { name: "Thaumaturge", uuid: "Actor.mara.Item.do.ActiveEffect.th", parent: order, description: "", duration: {}, statuses: new Set(), flags: {},
   changes: [{ key: "system.skills.arc.bonuses.check", type: "add", value: "(max(1,@abilities.wis.mod))" }] };
-alwen.appliedEffects = [slivered, thaum];
+mara.appliedEffects = [slivered, thaum];
 
-const sv = buildLessons({ subject: alwen, ability: "int" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ruleBonus: "-1d4" }, options: {} }, "save");
+const sv = buildLessons({ subject: mara, ability: "int" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ruleBonus: "-1d4" }, options: {} }, "save");
 const pen = sv.i.find(i => i[0] === "rulePenalty");
 ok(pen, `save penalty row: ${JSON.stringify(sv.i)}`);
-eq(pen?.[2], "Slivered, from Cyrus's Mind Sliver", "penalty names effect and source");
-eq(pen?.[4]?.[0]?.s, "Subtract 1d4 from the next saving throw it makes before the end of Cyrus's next turn.", "rule sentence from the spell, caster named");
+eq(pen?.[2], "Slivered, from Kara's Mind Sliver", "penalty names effect and source");
+eq(pen?.[4]?.[0]?.s, "Subtract 1d4 from the next saving throw it makes before the end of Kara's next turn.", "rule sentence from the spell, caster named");
 eq(pen?.[4]?.[0]?.d, "1 round", "duration");
 ok(pen?.[4]?.[0]?.w?.includes("once") && pen?.[4]?.[0]?.x1 === 1, "one-roll effect flagged");
 ok(!sv.i.some(i => i[4]?.some(e => e.n === "Thaumaturge")), "skill bonus not attached to a save");
 
 slivered.flags = { "roll-lessons": { usedBy: "msg1" } };
-const sv2 = buildLessons({ subject: alwen, ability: "int" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ruleBonus: "-1d4" }, options: {} }, "save");
+const sv2 = buildLessons({ subject: mara, ability: "int" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ruleBonus: "-1d4" }, options: {} }, "save");
 ok(sv2.i.find(i => i[0] === "rulePenalty")?.[4]?.[0]?.w?.includes("used"), "already-used effect warned");
 slivered.flags = {};
 
@@ -145,7 +146,7 @@ ok(appliedEarly(ex, { ...cast, castAt: 3000 }) === false, "applied by an earlier
 ok(appliedEarly(ex, cast) === "maybe", "casting time unknown: maybe");
 ok(appliedEarly(ex, { activity: "Actor.x.Item.y.Activity.z", item: "Actor.x.Item.y" }) === false, "other spell: no warning");
 
-const sk = buildLessons({ subject: alwen, ability: "int", skill: "arc" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ...wis3 }, options: {} }, "skill");
+const sk = buildLessons({ subject: mara, ability: "int", skill: "arc" }, { parts: ["@mod", "@ruleBonus"], data: { mod: 3, ...wis3 }, options: {} }, "skill");
 const th = sk.i.find(i => i[0] === "ruleBonus");
 ok(th?.[1] === 3, `Thaumaturge value 3: ${JSON.stringify(th)}`);
 eq(th?.[2], "Thaumaturge, from Divine Order", "Thaumaturge source");
@@ -161,11 +162,11 @@ eq(conditionClauses("You have Disadvantage on attack rolls and ability checks.",
 eq(plainText("<p>It&rsquo;s @UUID[Compendium.x.y]{Bless}.</p>"), "It's Bless.", "plain text from HTML");
 
 const poisoned = { name: "Poisoned", uuid: "Actor.f.ActiveEffect.p", statuses: new Set(["poisoned"]), description: "<p>See the rules.</p>", duration: {}, flags: {}, changes: [] };
-eq(explainReason(poisoned, alwen, "attack").s, "You have Disadvantage on attack rolls and ability checks.", "condition reason uses the condition rule text");
+eq(explainReason(poisoned, mara, "attack").s, "You have Disadvantage on attack rolls and ability checks.", "condition reason uses the condition rule text");
 
 // Render cross-check counts bracketed terms ("Added after" false row in 1.4.0)
-const alwenRoll = { terms: [{ faces: 20, total: 11 }, { operator: "+" }, { number: 3, total: 3 }, { operator: "+" }, { total: 3, dice: [] }] };
-ok(flatTotal(alwenRoll) === 6, `flat total counts (max(1,3)): ${flatTotal(alwenRoll)}`);
+const maraRoll = { terms: [{ faces: 20, total: 11 }, { operator: "+" }, { number: 3, total: 3 }, { operator: "+" }, { total: 3, dice: [] }] };
+ok(flatTotal(maraRoll) === 6, `flat total counts (max(1,3)): ${flatTotal(maraRoll)}`);
 ok(flatTotal({ terms: [{ faces: 20, total: 9 }, { operator: "+" }, { number: 3 }, { operator: "-" }, { faces: 4, total: 2 }] }) === 3, "subtracted dice ignored by flat total");
 
 eq(diceSigns("1d4 + -1d4"), [1, -1], "mixed bonus and penalty dice keep their signs");
@@ -175,7 +176,7 @@ eq(diceSigns("(floor((@details.level + 1) / 6))d6 + 2d8"), [1, 1], "bracketed di
 eq(batchPath(new Date("2026-10-13T04:05:06Z"), 7, "ab12"), { dir: "roll-lessons-logs/2026-10-13", name: "040506-007-ab12.json" }, "batch file name");
 
 // Reports
-const msg = { id: "m1", speaker: { alias: "Alwen" } };
+const msg = { id: "m1", speaker: { alias: "Mara" } };
 const rep = report.buildReport({ category: "unclear", message: msg, index: 0, roll: { formula: "1d20 + 3", total: 14 }, L: sv, text: "x", rows: ["-1d4 Penalty"], comment: "a".repeat(600) });
 ok(rep.category === "unclear" && rep.message === "m1" && rep.comment.length === 500 && rep.lessons === sv && rep.id, "report payload");
 const quiet = report.buildReport({ category: "error", message: msg, index: 0, comment: "   " });
@@ -194,6 +195,45 @@ const rv = review([
 ], { [quiet.id]: { s: "fixed", v: "1.5.0" } });
 ok(rv.counts.rolls === 2 && rv.counts.flagged === 2 && rv.counts.reports === 2 && rv.counts.open === 1 && rv.counts.unclear === 1, `review counts ${JSON.stringify(rv.counts)}`);
 ok(rv.flags[1].why.includes("no sentence: Hex"), "effect without sentence flagged");
+
+// 1.5.1: True Strike swaps the attack ability; a missing ability modifier is flagged
+const tsSpell = { documentName: "Item", name: "True Strike", uuid: "Actor.cy.Item.ts", system: { properties: new Set(), description: { value: "<p>Guided by a flash of magical insight, you make one attack with the weapon used in the spell's casting. The attack uses your spellcasting ability for the attack and damage rolls instead of using Strength or Dexterity.</p>" } } };
+const cyr = { documentName: "Actor", name: "Cy", uuid: "Actor.cy", id: "cy", items: [], appliedEffects: [], effects: [],
+  system: { abilities: { str: { mod: 0 }, dex: { mod: 2 }, cha: { mod: 4 } }, attributes: { prof: 2, spellcasting: "cha" } } };
+tsSpell.actor = cyr;
+const tsAct = { documentName: "Activity", uuid: "Actor.cy.Item.ts.Activity.e", item: tsSpell };
+uuids.set(tsAct.uuid, tsAct);
+const ench = { name: "True Strike", type: "enchantment", disabled: false, active: true, origin: tsAct.uuid, description: "", duration: {}, statuses: new Set(), flags: {},
+  changes: [{ key: "activities[attack].attack.ability", value: "spellcasting" }] };
+const xbowItem = { name: "Light Crossbow (True Strike)", type: "weapon", effects: [ench], system: { identifier: "light-crossbow", type: { value: "simpleR" }, properties: new Set(), prof: { multiplier: 1 } } };
+const tsAtk = buildLessons({ subject: { item: xbowItem, actor: cyr, attack: { ability: "spellcasting" } } }, { parts: ["@mod", "@prof"], data: { mod: 4, prof: 2 }, options: { ability: "cha" } }, "attack");
+const tsMod = tsAtk.i.find(i => i[0] === "mod.attack");
+ok(tsAtk.c.ab === "effect" && /spellcasting ability/.test(tsMod?.[4]?.[0]?.s ?? ""), `True Strike explained on the modifier row: ${JSON.stringify(tsMod)}`);
+const noMod = buildLessons({ subject: { item: xbowItem, actor: cyr, attack: { ability: "spellcasting" } } }, { parts: ["@prof"], data: { prof: 2 }, options: { ability: "" } }, "attack");
+eq(noMod.i[0], ["mod.missing", 0, "expected Charisma +4", "l"], "missing ability modifier flagged with the expected one");
+const bow = { name: "Shortbow", type: "weapon", effects: [], system: { type: { value: "simpleR" }, properties: new Set(), prof: { multiplier: 1 } } };
+ok(buildLessons({ subject: { item: bow, actor: cyr } }, { parts: ["@mod", "@prof"], data: { mod: 2, prof: 2 }, options: { ability: "dex" } }, "attack").c.ab === "ranged", "ranged weapon reason");
+
+// 1.5.1: an effect that is turned off is named as not applied (Rage that ran out)
+const rageOff = { name: "Rage", disabled: true, active: false, isSuppressed: false, duration: {}, statuses: new Set(), flags: {}, changes: [{ key: "system.bonuses.mwak.damage", value: "+@scale.barbarian.rage-damage" }] };
+const ted = { documentName: "Actor", name: "Ted", uuid: "Actor.ted", items: [], appliedEffects: [], effects: [rageOff], allApplicableEffects: function* () { yield rageOff; },
+  system: { abilities: { str: { mod: 4 } }, attributes: { prof: 2 } } };
+const hal = { name: "Halberd", type: "weapon", effects: [], system: { type: { value: "martialM" }, properties: new Set(), damage: {} } };
+const tdmg = buildLessons({ subject: { item: hal, actor: ted, getActionType: () => "mwak" } }, { parts: ["1d10", "@mod"], data: { mod: 4, scale: { barbarian: { "rage-damage": 2 } } }, options: { ability: "str" } }, "damage");
+eq(tdmg.off, [{ n: "Rage", why: "off", b: 2 }], "Rage turned off is listed as not applied");
+
+// 1.5.1: no-proficiency row names only the save rolled
+const svp = buildLessons({ subject: mara, ability: "int" }, { parts: ["@mod"], data: { mod: 3 }, options: {} }, "save");
+eq(svp.i.find(i => /^prof\.none/.test(i[0])), ["prof.none.save", 0, "not proficient in Intelligence saving throws", "l"], "save no-proficiency wording");
+
+// 1.5.1: effect check on spell and feature cards
+const tmpl = { uuid: "Actor.c.Item.ma.ActiveEffect.t", name: "Mage Armor", changes: [{ key: "system.attributes.ac.calc", value: "mage" }] };
+const maAct = { uuid: "Actor.c.Item.ma.Activity.u" };
+const holder = effects => ({ effects });
+eq(effectState(tmpl, holder([]), maAct).state, "missing", "effect never applied");
+eq(effectState(tmpl, holder([{ name: "Mage Armor", disabled: false, _stats: { duplicateSource: tmpl.uuid }, changes: tmpl.changes }]), maAct).state, "ok", "applied copy found");
+eq(effectState(tmpl, holder([{ name: "Rage", disabled: true, origin: maAct.uuid, _stats: {}, changes: [] }].map(e => ({ ...e, name: "Mage Armor" }))), maAct).state, "off", "applied but turned off");
+eq(effectState(tmpl, holder([{ name: "Mage Armour", disabled: false, _stats: {}, changes: [] }]), maAct).state, "empty", "hand-made copy with no changes");
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

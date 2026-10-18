@@ -19,7 +19,7 @@
       },
       "expanded": {
         "name": "Open breakdowns by default",
-        "hint": "Expand the panel automatically on new messages (this client only)."
+        "hint": "Show each breakdown open under its roll (this client only). On by default."
       },
       "customRules": {
         "name": "Custom rule text (JSON)",
@@ -40,14 +40,21 @@
       "reportButtons": {
         "name": "Error and Unclear buttons",
         "hint": "Show two buttons under every breakdown so players and the GM can report a wrong or unclear explanation. Reports are saved in the roll log and listed in the Roll Lessons reports window."
+      },
+      "effectCheck": {
+        "name": "Effect check on spell and feature cards",
+        "hint": "Under a spell or feature card that creates effects (Rage, Mage Armor, Bless, Shield), say when an effect never reached the creature it is for, or no target was selected, and apply it with one click. Shown to the GM and the player who used it."
+      },
+      "gmTodo": {
+        "name": "GM to-do bar",
+        "hint": "Shows an orange bar at the top of the GM's screen when something needs the GM to apply it: effects from spell and feature cards that never reached their creature, damage or healing rolled against a target whose hit points did not change, and effects turned off that a roll needed. Each item has the button that fixes it."
       }
     },
     "panel": {
       "summary": "How this total was built",
-      "die": "Die",
       "total": "Total",
-      "kept": "kept",
-      "dropped": "dropped",
+      "kept": "Kept",
+      "dropped": "Dropped",
       "advantage": "Advantage",
       "disadvantage": "Disadvantage",
       "reasons": "Why",
@@ -63,7 +70,7 @@
       "critDoubled": "doubled by the critical hit to",
       "dcBuilt": "DC {dc} = 8 + {caster}'s {ability} modifier ({mod}) + Proficiency Bonus ({prof}).",
       "dcSet": "DC {dc}, set on {item}.",
-      "saveSucceeded": "Succeeded: {total} meets DC {dc}.",
+      "saveSucceeded": "Succeeded: {total} meets or beats DC {dc}.",
       "saveFailed": "Failed: {total} is below DC {dc}.",
       "saveAgainst": "Save against",
       "outcome": "Outcome",
@@ -89,7 +96,25 @@
       "warnUsed": "Warning: an earlier roll already used {name}. It applies to one roll only and should have been removed before this roll.",
       "warnExpired": "Warning: the duration of {name} has run out, but the effect is still on the creature.",
       "warnEarly": "Warning: {name} was applied by the same casting of {source} this save is against. It should only be applied after a failed save, so it should not change this roll.",
-      "warnEarlyMaybe": "Warning: {name} comes from {source}, which this save is against. If it was applied by this same casting, it was applied too early: it should only be applied after a failed save. If it came from an earlier casting, it applies."
+      "warnEarlyMaybe": "Warning: {name} comes from {source}, which this save is against. If it was applied by this same casting, it was applied too early: it should only be applied after a failed save. If it came from an earlier casting, it applies.",
+      "dieRoll": "d{faces} roll",
+      "rolledDie": "Rolled",
+      "saveWhyAbility": "{item} calls for a {ability} saving throw, so this roll adds the {ability} modifier. The spell or ability always names which ability resists it.",
+      "saveWhat": "A saving throw is a d20 roll to resist a threat such as a spell. The Difficulty Class (DC) is the number to reach: a total equal to or higher than the DC succeeds.",
+      "saveResisted": "{who} resists {item}: its effect on a failed save does not happen.",
+      "saveHalf": "{who} takes half the damage from {item}.",
+      "saveTakesEffect": "{item} takes effect on {who}.",
+      "spellSays": "{item} says:",
+      "warnNoMod": "Warning: dnd5e added no ability modifier to this attack, so the total is likely wrong. Every attack roll adds an ability modifier.",
+      "notApplied": "Not applied",
+      "offBonus": "bonus ({value})",
+      "off_off": "{name} is on this creature but turned off, so its {what} is not part of this roll.",
+      "off_expired": "{name} is on this creature but its duration ran out, so Foundry turned it off and its {what} is not part of this roll.",
+      "off_suppressed": "{name} is suppressed, usually because its item is not equipped or attuned, so its {what} is not part of this roll.",
+      "mastery": "Weapon Mastery",
+      "masteryFrom": "Granted by: {names}.",
+      "masteryNoFeature": "Warning: {name} has no Weapon Mastery feature or Weapon Master feat, so this mastery comes from the character sheet's setting, not from a feature. In the 2024 Player's Handbook, Weapon Mastery is a level 1 feature of Barbarians, Fighters, Paladins, Rangers and Rogues, and the Weapon Master feat (level 4+) grants it.",
+      "noTarget": "Warning: no target was selected, so this attack can't be compared to an Armor Class and Hit or Miss can't be shown."
     },
     "warn": {
       "system": "Roll Lessons only works with the dnd5e system.",
@@ -137,6 +162,68 @@
       "statusFixed": "Fixed",
       "statusReworded": "Reworded",
       "statusWontfix": "Won't fix"
+    },
+    "fix": {
+      "theRightAbility": "the right ability",
+      "theCreature": "the creature",
+      "thisWeapon": "this weapon",
+      "once": "How to fix: on {who}'s sheet, open Effects and delete {name} now.",
+      "used": "How to fix: on {who}'s sheet, open Effects, delete {name}, then reroll this roll.",
+      "expired": "How to fix: on {who}'s sheet, open Effects, delete {name}, then reroll this roll.",
+      "early": "How to fix: on {who}'s sheet, open Effects, delete {name}, and reroll the save. Apply {name} only if the save fails.",
+      "earlyMaybe": "How to fix: if {name} came from this casting, delete it from {who}'s Effects, reroll the save, and apply it only if the save fails.",
+      "noSentence": "How to fix: open the effect {name}, go to its Details tab, and paste the rule sentence into Description. Later rolls will show it.",
+      "noMod": "How to fix: reroll and pick {expected} in the roll window's ability box. If the roll window has no ability box, set the ability on the item's attack activity.",
+      "rageMissing": "How to fix: reroll the damage and type {rage} in the roll window's Situational Bonus box.",
+      "off_off": "How to fix: on {who}'s sheet, use {name} again (or open Effects and turn it on), then reroll.",
+      "off_expired": "How to fix: if {name} should still be active, use it again on {who}'s sheet, then reroll.",
+      "off_suppressed": "How to fix: equip or attune the item that grants {name} on {who}'s sheet, then reroll.",
+      "mastery": "How to fix: on {name}'s sheet, remove {weapon} from Weapon Mastery in the weapon proficiency settings, unless a feature you haven't added grants it.",
+      "noTarget": "How to fix: before rolling, target the creature: hover over its token and press T. Then roll the attack again."
+    },
+    "apply": {
+      "title": "Roll Lessons: effect not applied",
+      "state_missing": "{effect} from {item} is not on {names}.",
+      "state_off": "{effect} is on {names} but turned off.",
+      "state_empty": "{effect} on {names} was made by hand and changes nothing.",
+      "why": "Until it is, its modifiers are not counted: {what}.",
+      "whyGeneric": "Until it is, its modifiers are not counted.",
+      "w_ac": "Armor Class",
+      "w_saves": "saving throws",
+      "w_attacks": "attack rolls",
+      "w_damage": "damage",
+      "w_checks": "ability checks",
+      "w_resist": "damage resistances",
+      "w_advantage": "Advantage or Disadvantage",
+      "w_speed": "Speed",
+      "fixApply": "How to fix: click the button below to apply it to {names}.",
+      "applyTo": "Apply to {names}",
+      "noTargets": "No target was selected when {item} was used, so {effect} reached no one.",
+      "fixTargets": "How to fix: target each creature it affects (hover over its token and press T), then click Apply to my targets.",
+      "applyMyTargets": "Apply to my targets",
+      "noneTargeted": "Roll Lessons: target the creatures first (hover over a token and press T).",
+      "noGM": "Roll Lessons: a GM must be online to apply effects to creatures you don't own.",
+      "done": "Roll Lessons: {count} effect(s) applied.",
+      "failed": "Roll Lessons: the effect could not be applied. See the console (F12).",
+      "todoMissing": "{effect} from {who}'s {item} is not on {names}.",
+      "todoNoTargets": "{who} used {item} with no target selected, so its effect reached no one."
+    },
+    "todo": {
+      "head": "Roll Lessons: {count} to apply (click to open)",
+      "notice": "Roll Lessons, GM to apply: {text} See the orange bar at the top of the screen.",
+      "show": "Show message",
+      "dismiss": "Dismiss",
+      "failed": "Roll Lessons: that action failed. See the console (F12).",
+      "damageNotApplied": "{who} rolled {total} {types} damage against {names}, but their hit points did not change.",
+      "healingNotApplied": "{who} rolled {total} healing for {names}, but their hit points did not change.",
+      "damageWhy": "dnd5e does not take damage off hit points by itself: someone has to apply it. Apply full damage on a hit or failed save, or half when the spell says a successful save takes half.",
+      "healingWhy": "dnd5e does not add healing to hit points by itself: someone has to apply it.",
+      "applyFull": "Apply full damage",
+      "applyHalf": "Apply half damage",
+      "applyHealing": "Apply healing",
+      "offEffect": "{name} on {who} is turned off, and a roll just made would have used it.",
+      "offWhy": "If it should still be active (for example Rage was used again), turn it on so its modifiers count.",
+      "turnOn": "Turn on {name}"
     }
   }
 }
