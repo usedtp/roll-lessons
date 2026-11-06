@@ -25,13 +25,9 @@
         "name": "Custom rule text (JSON)",
         "hint": "Optional. JSON that overrides the wording of any rule, for example {\"prof.expertise\": {\"title\": \"Expertise\", \"text\": \"My table wording.\"}}. Leave empty to use the defaults."
       },
-      "debug": {
-        "name": "Debug logging",
-        "hint": "Write roll configuration details to the browser console (F12). Use this when reporting a problem."
-      },
       "rollLog": {
         "name": "Roll log",
-        "hint": "Record every roll's breakdown and every Error or Unclear report to Data/roll-lessons-logs/ (one folder per day, a new file every 30 seconds while rolls are made) so problems can be found and fixed later. Written by the GM's browser. Old logs are deleted by hand from that folder."
+        "hint": "Record every roll's breakdown to Data/roll-lessons-logs/ (one folder per day, a new file every 30 seconds while rolls are made). Written by the GM's browser. Old logs are deleted by hand from that folder."
       },
       "hideZeroDamage": {
         "name": "Hide damage that can only be 0",
@@ -39,7 +35,7 @@
       },
       "reportButtons": {
         "name": "Error and Unclear buttons",
-        "hint": "Show two buttons under every breakdown so players and the GM can report a wrong or unclear explanation. Reports are saved in the roll log and listed in the Roll Lessons reports window."
+        "hint": "Show two buttons under every breakdown so players and the GM can report a wrong or unclear explanation. Reports are sent through usedtp Logger; the GM reads them in usedtp Logger's Log viewer."
       },
       "effectCheck": {
         "name": "Effect check on spell and feature cards",
@@ -132,36 +128,11 @@
       "introUnclear": "Tell the GM which part of this breakdown is hard to understand.",
       "rows": "Which lines? (optional)",
       "comment": "Comment (optional, up to 500 characters)",
-      "disclaimer": "Your comment is saved in this world's roll log. The GM may share it with the Roll Lessons developer to improve explanations. Don't include real names or personal details.",
+      "disclaimer": "Your comment is saved in this world's usedtp Logger log. The GM may share it with the Roll Lessons developer to improve explanations. Don't include real names or personal details.",
       "send": "Send report",
       "sent": "Report sent to the GM.",
-      "logged": "Report saved in the roll log.",
-      "queued": "No GM is online. Your report is saved in this browser and will be sent when a GM connects.",
-      "resent": "Roll Lessons: {count} saved report(s) sent to the GM.",
-      "received": "Roll Lessons: {user} reported {category} on a roll. Open Settings > Roll Lessons reports to read it."
-    },
-    "reports": {
-      "title": "Roll Lessons reports",
-      "menuName": "Reports",
-      "menuLabel": "Roll Lessons reports",
-      "menuHint": "Read the Error and Unclear reports players and GMs sent from the breakdown panels.",
-      "filter_all": "All",
-      "filter_error": "Error",
-      "filter_unclear": "Unclear",
-      "error": "Error",
-      "unclear": "Unclear",
-      "showFixed": "Show fixed",
-      "refresh": "Refresh",
-      "empty": "No reports.",
-      "rowsMarked": "Lines marked:",
-      "panel": "Breakdown as shown",
-      "show": "Show message",
-      "gone": "This chat message was deleted.",
-      "notInLog": "The message is not loaded in the chat log. Scroll up in chat and try again.",
-      "statusNew": "New",
-      "statusFixed": "Fixed",
-      "statusReworded": "Reworded",
-      "statusWontfix": "Won't fix"
+      "logged": "Report saved in the log.",
+      "queued": "No GM is online. Your report is saved in this browser and will be sent when a GM connects."
     },
     "fix": {
       "theRightAbility": "the right ability",

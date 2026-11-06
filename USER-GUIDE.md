@@ -2,7 +2,7 @@
 
 Roll Lessons adds a collapsible panel under every dnd5e roll in chat. The panel lists each number in the total, where it came from, and the rule behind it.
 
-Requirements: Foundry VTT v14, dnd5e system 6.0.0 or newer (built against 6.0.6).
+Requirements: Foundry VTT v14, dnd5e system 6.0.0 or newer (built against 6.0.6), and usedtp Logger 1.0.0 or newer. Installing from the Manifest URL installs usedtp Logger too; enable both modules in the world. usedtp Logger keeps the error log and the Error and Unclear reports for every usedtp module.
 
 ## Install
 
@@ -41,13 +41,11 @@ Open Game Settings, Configure Settings, Roll Lessons.
 | Detail level | Each user | Beginner | Beginner shows rule text. Advanced shows labels and values only. |
 | Open breakdowns by default | Each user | On | Shows each panel open under its roll. |
 | Custom rule text (JSON) | World | Empty | Overrides wording. Applies on save, also to old messages. |
-| Debug logging | Each user | Off | Writes roll details to the browser console. |
-| Roll log | World, GM only | On | Saves every roll's breakdown to `Data/roll-lessons-logs/YYYY-MM-DD/`, a new file every 30 seconds while rolls are made, written by the GM's browser. Reports are saved even when this is off. |
+| Roll log | World, GM only | On | Saves every roll's breakdown to `Data/roll-lessons-logs/YYYY-MM-DD/`, a new file every 30 seconds while rolls are made, written by the GM's browser. |
 | Hide damage that can only be 0 | World | On | Hides damage rolls with no dice and no bonus (for example True Strike's extra Radiant damage below level 5) from chat cards and breakdowns. The roll is kept in the data. |
 | Error and Unclear buttons | World | On | Shows the report buttons under every breakdown. |
 | GM to-do bar | World | On | Orange bar at the top of the GM's screen listing what the GM still needs to apply, each with a fix button. |
 | Effect check on spell and feature cards | World | On | Says when an effect from a spell or feature card never reached the creature it is for, and applies it with one click. |
-| Roll Lessons reports | GM only | Button | Opens the list of Error and Unclear reports. |
 
 ## Reading a panel
 
@@ -119,7 +117,7 @@ Placeholders you can use in text: `{ability}`, `{cr}`, `{score}`, `{mod}`, `{pro
 
 ## Performance
 
-The module does no work between rolls. It runs once when a roll is configured and once when a chat card is drawn. Panel contents are built only when opened. Turn Debug logging off when you are not reporting a problem.
+The module does no work between rolls. It runs once when a roll is configured and once when a chat card is drawn. Panel contents are built only when opened.
 
 ## What each panel explains
 
@@ -157,35 +155,37 @@ Every breakdown ends with "Explanation wrong or unclear?" and two buttons.
 - **Error**: a number, source or rule is wrong.
 - **Unclear**: the explanation is hard to understand.
 
-The report window lists the breakdown's lines. Tick the ones the report is about (optional), add a comment of up to 500 characters (optional), and click **Send report**. The comment is saved in this world's roll log. The GM may share it with the Roll Lessons developer, so don't include real names or personal details.
+The report window lists the breakdown's lines. Tick the ones the report is about (optional), add a comment of up to 500 characters (optional), and click **Send report**. The comment is saved in this world's usedtp Logger log. The GM may share it with the Roll Lessons developer, so don't include real names or personal details.
 
-The report goes to the GM's browser, which saves it in the roll log and shows a notice. If no GM is online, it is saved in the player's browser and sent when a GM connects.
+Reports are delivered by usedtp Logger: it saves them in `Data/usedtp-logs/roll-lessons/`. If no GM is online, the report waits in the player's browser and is sent when a GM connects.
 
-GM: open **Configure Settings**, **Roll Lessons**, **Roll Lessons reports**. Filter by Error or Unclear, read the marked lines, comment and the breakdown as the player saw it, and click **Show message** to jump to the roll in chat. Reports marked fixed are hidden unless **Show fixed** is ticked.
+GM: open **Configure Settings**, **usedtp Logger**, **Open logs**. Filter by Roll Lessons and by report, read the marked lines, comment and the breakdown as the player saw it, and click **Show in chat** to jump to the roll. Mark reports Fixed or Won't fix there.
+
+Panel rows Roll Lessons could not explain, and errors inside Roll Lessons, are logged to the same place.
 
 ## Roll log
 
-The GM's browser writes the log to `Data/roll-lessons-logs/`. Each day has its own folder; each file holds the rolls and reports of up to 30 seconds. There is no limit per day. Files from version 1.4.0 and earlier (`YYYY-MM-DD.json`) stay readable. Only the GM's browser writes, so the log only records rolls while a GM is logged in.
+The roll log is the dataset of every roll's breakdown. The GM's browser writes it to `Data/roll-lessons-logs/`. Each day has its own folder; each file holds the rolls of up to 30 seconds. Reports are not in it (see Reports). There is no limit per day. Files from version 1.4.0 and earlier (`YYYY-MM-DD.json`) stay readable. Only the GM's browser writes, so the log only records rolls while a GM is logged in.
 
-`qa/roll-lessons-review.js` reads every log file and lists open reports grouped by cause, rolls the module flagged itself (numbers matched without a dnd5e label, unaccounted totals, effects with no rule sentence, timing warnings) and panel issues. Run it as a GM in the Console like the QA test. To mark reports fixed, set `window.__rlReview = { mark: { ids: ["report id"], s: "fixed", v: "1.5.1" } }` first; the status is saved in `Data/roll-lessons-logs/report-status.json`.
+`qa/roll-lessons-review.js` reads every roll log file and lists the rolls the module flagged itself (numbers matched without a dnd5e label, unaccounted totals, effects with no rule sentence, timing warnings), plus reports and panel issues saved in the roll log before 1.6.0. Run it as a GM in the Console like the QA test.
 
 ## QA test
 
 `qa/roll-lessons-bench.js` is the full bench. It creates a "Roll Lessons QA" actor folder, QA NPCs and a "Roll Lessons QA" scene (once), rolls every weapon and spell from your compendiums against QA targets, checks each breakdown against the Player's Handbook, and deletes its whispered test messages at the end. Its "effects" phase adds and removes test effects on the QA NPCs (a Mind Sliver penalty, a formula skill bonus, Bless and Poisoned) to check sources, rule sentences, durations and timing warnings, and its "log" phase sends one test report and marks it "won't fix".
 
-`qa/roll-lessons-qa.js` tests every roll type with this world's characters. It is read-only: nothing is posted to chat and no character data changes. To run it, log in as a GM, press F12, open the Console, paste the whole file and press Enter. It prints a pass, fail and skip count with details for each test.
+`qa/roll-lessons-qa.js` tests every roll type with this world's characters. It is read-only: nothing is posted to chat and no character data changes. To run it, log in as a GM, press F12, open the Console, paste the whole file and press Enter. It returns a pass, fail and skip count with details for each test.
 
 ## Troubleshooting
 
 No panel appears:
 1. Confirm the module is enabled in the world and Enable Roll Lessons is on.
 2. Make a new roll. Old messages are not updated.
-3. Press F12, open the Console, and look for lines starting with `roll-lessons |`.
+3. GM: open Configure Settings, usedtp Logger, Open logs, and filter by Roll Lessons.
 
 To report a problem in the game, use the Error or Unclear button. To report one on GitHub:
-1. Turn on Debug logging.
+1. In usedtp Logger's settings, turn on Log debug to file.
 2. Make the roll that is wrong.
-3. In the Console, copy the line `roll-lessons | breakdown` (expand it), and any red errors.
-4. Send those with your Foundry and dnd5e versions.
+3. In usedtp Logger's Open logs, filter by Roll Lessons and click Export JSON.
+4. Send that file with your Foundry and dnd5e versions.
 
 Two other modules that change chat roll cards can hide the panel. Disable them one at a time to find the conflict.

@@ -6,7 +6,6 @@ export const cfg = {
   visibility: "all",
   detail: "beginner",
   expanded: true,
-  debug: false,
   rollLog: true,
   hideZeroDamage: true,
   reportButtons: true,
@@ -36,7 +35,6 @@ export function registerSettings(onRulesChange) {
   });
   reg("expanded", { scope: "client", type: Boolean, default: true });
   reg("customRules", { scope: "world", type: String, default: "", onChange: () => onRulesChange?.() });
-  reg("debug", { scope: "client", type: Boolean, default: false });
   reg("rollLog", { scope: "world", type: Boolean, default: true, restricted: true });
   reg("hideZeroDamage", { scope: "world", type: Boolean, default: true });
   reg("reportButtons", { scope: "world", type: Boolean, default: true });

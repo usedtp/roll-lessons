@@ -1,5 +1,6 @@
 import { MODULE_ID, cfg } from "./settings.mjs";
 import { cardTodo } from "./apply.mjs";
+import { log } from "./diag.mjs";
 
 /*
  * GM to-do list: an orange bar at the top of the GM's screen whenever something needs the GM to apply it.
@@ -84,7 +85,7 @@ function draw() {
           await a.run();
           if (a.done !== false) removeItem(id);
         } catch (err) {
-          console.error(`${MODULE_ID} | to-do action failed`, err);
+          log().error("to-do action failed", err, { messageId: item.message });
           ui.notifications.error(loc("failed"));
           b.disabled = false;
         }
@@ -177,7 +178,7 @@ export function onCreateMessage(message) {
     if (message.type === "usage") watchCard(message);
     if (message.isRoll) { watchDamage(message); watchOff(message); }
   } catch (err) {
-    console.error(`${MODULE_ID} | to-do check failed`, err);
+    log().error("to-do check failed", err, { messageId: message?.id });
   }
 }
 

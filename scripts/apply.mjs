@@ -1,6 +1,7 @@
 import { MODULE_ID, cfg } from "./settings.mjs";
 import { isWriter } from "./log.mjs";
-import { CHANNEL } from "./report.mjs";
+import { CHANNEL } from "./socket.mjs";
+import { log } from "./diag.mjs";
 import { normalizeKey } from "./effects.mjs";
 
 /*
@@ -186,7 +187,7 @@ export function onApplySocket(data) {
   if (data?.action !== "applyEffects" || !isWriter()) return;
   const message = game.messages.get(data.message);
   const actors = (data.actors ?? []).map(docFrom).map(d => d?.actor ?? d).filter(Boolean);
-  if (message && actors.length) applyHere(message, actors).catch(err => console.error(`${MODULE_ID} | apply failed`, err));
+  if (message && actors.length) applyHere(message, actors).catch(err => log().error("apply failed", err, { messageId: message.id }));
 }
 
 function button(label, onClick) {
@@ -197,7 +198,7 @@ function button(label, onClick) {
     ev.preventDefault();
     ev.stopPropagation();
     b.disabled = true;
-    try { await onClick(); } catch (err) { console.error(`${MODULE_ID} | apply failed`, err); ui.notifications.error(loc("failed")); }
+    try { await onClick(); } catch (err) { log().error("apply failed", err); ui.notifications.error(loc("failed")); }
     b.disabled = false;
   });
   return b;
@@ -271,7 +272,7 @@ export function injectApplyCheck(message, html) {
     const box = applyBox(message);
     if (box) (html.querySelector(".message-content") ?? html).append(box);
   } catch (err) {
-    console.error(`${MODULE_ID} | effect check failed`, err);
+    log().error("effect check failed", err, { messageId: message?.id });
   }
 }
 

@@ -20,7 +20,7 @@ const uuids = new Map();
 globalThis.fromUuidSync = u => uuids.get(u) ?? null;
 // Node 22 provides navigator.userAgent.
 globalThis.game = {
-  modules: { get: () => ({ version: "1.5.1" }) },
+  modules: { get: () => ({ version: "1.6.0" }) },
   settings: { get: () => "" },
   i18n: { localize: k => k, format: (k, d) => `${k} ${JSON.stringify(d)}` },
   user: { id: "player1", name: "test", isGM: false }, users: { activeGM: null }, version: "14.369", system: { version: "6.0.6" },
@@ -50,13 +50,13 @@ const report = await import("../scripts/report.mjs");
 const { review } = await import("../scripts/review.mjs");
 
 let pass = 0, fail = 0;
-const ok = (c, m) => c ? pass++ : (fail++, console.log("FAIL:", m));
+const ok = (c, m) => c ? pass++ : (fail++, process.stdout.write(`FAIL: ${m}\n`));
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), `${m}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`);
 
 // Rule book loading
 fetchPlan = ["ok"];
 ok(await RuleBook.load() === true && RuleBook.status.state === "ok", "rules load");
-ok(fetched.at(-1).endsWith("rules.json?v=1.5.1"), `cache-busting url ${fetched.at(-1)}`);
+ok(fetched.at(-1).endsWith("rules.json?v=1.6.0"), `cache-busting url ${fetched.at(-1)}`);
 ok(RuleBook.status.count > 50 && "cantripUpgrade" in RuleBook.data, "rules count and new key");
 ok(hooks.some(([n, s]) => n === "roll-lessons.rulesLoaded" && s.state === "ok"), "rulesLoaded hook");
 fetchPlan = ["404", "ok"];
@@ -175,25 +175,29 @@ eq(diceSigns("(floor((@details.level + 1) / 6))d6 + 2d8"), [1, 1], "bracketed di
 // Batch log files
 eq(batchPath(new Date("2026-10-13T04:05:06Z"), 7, "ab12"), { dir: "roll-lessons-logs/2026-10-13", name: "040506-007-ab12.json" }, "batch file name");
 
-// Reports
+// Reports go through usedtp Logger (1.6.0)
+const sent = [];
+const { log } = await import("../scripts/diag.mjs");
+const fallbackLogger = log();
+ok(typeof fallbackLogger.report === "function" && typeof fallbackLogger.unclear === "function", "fallback logger when usedtp Logger is missing");
+game.modules.get = id => (id === "usedtp-logger" ? { api: { register: (mod, opts) => ({ mod, title: opts.title, report: async (cat, payload) => { sent.push({ cat, ...payload }); return "sent"; }, unclear() {}, error() {}, debug() {}, info() {} }) } } : { version: "1.6.0" });
+ok(log().mod === "roll-lessons" && log().title === "Roll Lessons", "registered with usedtp Logger");
 const msg = { id: "m1", speaker: { alias: "Mara" } };
-const rep = report.buildReport({ category: "unclear", message: msg, index: 0, roll: { formula: "1d20 + 3", total: 14 }, L: sv, text: "x", rows: ["-1d4 Penalty"], comment: "a".repeat(600) });
-ok(rep.category === "unclear" && rep.message === "m1" && rep.comment.length === 500 && rep.lessons === sv && rep.id, "report payload");
-const quiet = report.buildReport({ category: "error", message: msg, index: 0, comment: "   " });
-ok(!("comment" in quiet), "empty comment left out");
-ok(await report.sendReport(rep) === "queued" && report.storage.load().length === 1, "no GM online: report queued");
-game.users.activeGM = { id: "gm" };
-game.socket.emit = (ch, data) => { if (data.action === "report") setTimeout(() => report.onSocket({ action: "reportAck", id: data.report.id, to: game.user.id }), 5); };
-ok(await report.resendQueued() === 1 && report.storage.load().length === 0, "queued report sent when a GM is online");
-ok(await report.sendReport(quiet) === "sent", "report acknowledged by GM");
+const ctx = { message: msg, index: 0, roll: { formula: "1d20 + 3", total: 14 }, L: sv, panel: null };
+eq(report.reportContext({ ...ctx, text: "x", rows: ["-1d4 Penalty"] }), { messageId: "m1", roll: 0, kind: "save", formula: "1d20 + 3", total: 14, rows: ["-1d4 Penalty"], panel: "x", lessons: sv }, "report context");
+ok(await report.sendReport("unclear", ctx, { rows: ["-1d4 Penalty"], comment: "a".repeat(600) }) === "sent", "report sent through usedtp Logger");
+ok(sent[0]?.cat === "unclear" && sent[0].comment.length === 500 && sent[0].context.messageId === "m1" && sent[0].context.rows[0] === "-1d4 Penalty", `report payload ${JSON.stringify(sent[0]?.context?.rows)}`);
+await report.sendReport("bogus", ctx, {});
+ok(sent[1]?.cat === "error", "unknown category sent as error");
 
-// Review
+// Review (roll log flags; reports in logs written before 1.6.0)
+const oldRep = { type: "report", id: "r1", category: "unclear", kind: "save", rows: [], lessons: sv };
 const rv = review([
   { message: "a", kind: "skill", items: [{ key: "notFromRules", value: 2, how: "x" }], unaccounted: 2 },
   { message: "b", kind: "save", items: [{ key: "rulePenalty", value: "-1d4", how: "l", ex: [{ n: "Hex" }] }], unaccounted: 0 },
-  { ...rep, type: "report" }, { ...rep, type: "report" }, { ...quiet, type: "report" }
-], { [quiet.id]: { s: "fixed", v: "1.5.0" } });
-ok(rv.counts.rolls === 2 && rv.counts.flagged === 2 && rv.counts.reports === 2 && rv.counts.open === 1 && rv.counts.unclear === 1, `review counts ${JSON.stringify(rv.counts)}`);
+  oldRep, { ...oldRep }
+]);
+ok(rv.counts.rolls === 2 && rv.counts.flagged === 2 && rv.counts.reports === 1 && rv.counts.unclear === 1, `review counts ${JSON.stringify(rv.counts)}`);
 ok(rv.flags[1].why.includes("no sentence: Hex"), "effect without sentence flagged");
 
 // 1.5.1: True Strike swaps the attack ability; a missing ability modifier is flagged
@@ -235,5 +239,5 @@ eq(effectState(tmpl, holder([{ name: "Mage Armor", disabled: false, _stats: { du
 eq(effectState(tmpl, holder([{ name: "Rage", disabled: true, origin: maAct.uuid, _stats: {}, changes: [] }].map(e => ({ ...e, name: "Mage Armor" }))), maAct).state, "off", "applied but turned off");
 eq(effectState(tmpl, holder([{ name: "Mage Armour", disabled: false, _stats: {}, changes: [] }]), maAct).state, "empty", "hand-made copy with no changes");
 
-console.log(`${pass} passed, ${fail} failed`);
+process.stdout.write(`${pass} passed, ${fail} failed\n`);
 if (fail) process.exitCode = 1;

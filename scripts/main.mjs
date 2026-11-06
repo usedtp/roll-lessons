@@ -2,13 +2,12 @@ import { MODULE_ID, cfg, registerSettings, refreshSettings } from "./settings.mj
 import { RuleBook } from "./rules.mjs";
 import { buildLessons, addReasons, kindFromHookNames, restoreParts, repairParts } from "./breakdown.mjs";
 import { injectPanels, onRulesLoaded } from "./render.mjs";
-import { logMessage, flushLog, LOG_DIR, isWriter, readAllLogs, readReportStatus, setReportStatus, listLogFiles } from "./log.mjs";
+import { logMessage, flushLog, LOG_DIR, isWriter, readAllLogs, listLogFiles } from "./log.mjs";
 import { markUsed } from "./effects.mjs";
-import { registerReports, sendReport, buildReport } from "./report.mjs";
 import { injectApplyCheck, registerApply } from "./apply.mjs";
 import { registerTodo } from "./gm-todo.mjs";
-import { registerReportsMenu, ReportsApp } from "./reports-app.mjs";
 import { review } from "./review.mjs";
+import { log } from "./diag.mjs";
 
 Hooks.once("init", () => {
   registerSettings(() => RuleBook.load());
@@ -20,11 +19,9 @@ Hooks.once("init", () => {
   Hooks.on("createChatMessage", logMessage);
   Hooks.on("createChatMessage", message => { if (cfg.enabled) markUsed(message, isWriter); });
   Hooks.on(`${MODULE_ID}.rulesLoaded`, onRulesLoaded);
-  registerReportsMenu();
   game.modules.get(MODULE_ID).api = {
-    flushLog, LOG_DIR, listLogFiles, readAllLogs, readReportStatus, setReportStatus, sendReport, buildReport,
-    review: async () => review(await readAllLogs(), await readReportStatus()),
-    openReports: () => new ReportsApp().render({ force: true })
+    flushLog, LOG_DIR, listLogFiles, readAllLogs,
+    review: async () => review(await readAllLogs())
   };
 });
 
@@ -35,11 +32,11 @@ Hooks.once("setup", () => {
 });
 
 Hooks.once("ready", () => {
+  log().info("ready");
   if (game.system.id !== "dnd5e") {
     cfg.enabled = false;
     ui.notifications.warn(game.i18n.localize("ROLLLESSONS.warn.system"));
   }
-  registerReports();
   registerApply();
   registerTodo();
 });
@@ -71,7 +68,7 @@ function onPostBuildRollConfig(process, rc, index = 0) {
     rc.options ??= {};
     rc.options.rollLessons = buildLessons(process, effective, kindOf(process));
   } catch (err) {
-    console.error(`${MODULE_ID} | postBuildRollConfig failed`, err);
+    log().error("postBuildRollConfig failed", err);
   }
 }
 
@@ -85,7 +82,7 @@ function onPostRollConfiguration(rolls, config) {
       if (L?.v !== 2) L = roll.options.rollLessons = buildLessons(config, rc, kindOf(config, roll));
       addReasons(L, config, rc, roll);
     } catch (err) {
-      console.error(`${MODULE_ID} | postRollConfiguration failed`, err);
+      log().error("postRollConfiguration failed", err);
     }
   });
 }
@@ -99,6 +96,6 @@ function onPreConfigureInitiative(actor, rollConfig) {
     const L = buildLessons(config, rollConfig, "initiative");
     rollConfig.options.rollLessons = addReasons(L, config, rollConfig, { options: rollConfig.options });
   } catch (err) {
-    console.error(`${MODULE_ID} | preConfigureInitiative failed`, err);
+    log().error("preConfigureInitiative failed", err);
   }
 }

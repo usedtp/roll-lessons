@@ -1,7 +1,7 @@
 import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { isD20Kind } from "./breakdown.mjs";
-import { logIssue } from "./log.mjs";
+import { log } from "./diag.mjs";
 import { exLabel, appliedEarly } from "./effects.mjs";
 import { reportBar } from "./report.mjs";
 
@@ -16,7 +16,7 @@ function missingRule(key, extra, message, kind) {
   const loaded = RuleBook.status.state === "ok";
   const reason = !loaded ? game.i18n.format("ROLLLESSONS.panel.rulesNotLoaded", { state: RuleBook.status.state, error: RuleBook.status.error ?? "" })
     : key ? game.i18n.format("ROLLLESSONS.panel.noRuleText", { key }) : t("panel.noKey");
-  logIssue({ message: message?.id, kind, key, extra, reason, rules: { ...RuleBook.status } });
+  log().unclear(`${message?.id}|${key}|${reason}`, "panel issue", { message: message?.id, kind, key, extra, reason, rules: { ...RuleBook.status }, messageId: message?.id });
   return { label: extra ? `${extra}` : t("panel.unknown"), text: reason };
 }
 
@@ -521,9 +521,9 @@ function shell(roll, L, index, message) {
     }
     delete panel.dataset.failed;
     panel.dataset.built = "1";
-    try { panel.append(buildBody(roll, L, message)); } catch (err) { console.error(`${MODULE_ID} | render failed`, err); }
+    try { panel.append(buildBody(roll, L, message)); } catch (err) { log().error("render failed", err, { messageId: message?.id }); }
     if (cfg.reportButtons) {
-      try { panel.append(reportBar({ panel, message, index, roll, L })); } catch (err) { console.error(`${MODULE_ID} | report buttons failed`, err); }
+      try { panel.append(reportBar({ panel, message, index, roll, L })); } catch (err) { log().error("report buttons failed", err, { messageId: message?.id }); }
     }
   };
   panel._rlFill = fill;
@@ -584,7 +584,7 @@ export function injectPanels(message, html) {
   if (!cfg.enabled) return;
   if (cfg.visibility === "gm" && !game.user.isGM) return;
   if (!visible(message)) return;
-  try { injectSummaries(html); } catch (err) { console.error(`${MODULE_ID} | summary panels failed`, err); }
+  try { injectSummaries(html); } catch (err) { log().error("summary panels failed", err); }
   if (!message.isRoll) return;
   const rolls = message.rolls;
   if (!rolls?.some(r => r.options?.rollLessons?.v === 2)) return;

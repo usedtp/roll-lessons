@@ -1,15 +1,15 @@
 import { cfg, MODULE_ID } from "./settings.mjs";
+import { log } from "./diag.mjs";
 
 /*
  * Roll log in Data/roll-lessons-logs/, written by the active GM's browser only.
  * 1.5.0: each write is a new batch file, roll-lessons-logs/YYYY-MM-DD/HHMMSS-<n>-<id>.json (UTC),
  * so nothing is re-read or capped. Daily files from 1.4.0 and earlier (YYYY-MM-DD.json) are still read.
- * Reports from the Error and Unclear buttons are log entries with type "report".
+ * Write failures go to usedtp Logger. Reports and panel issues go to usedtp Logger, not to this log.
  * Browsers cannot delete files through Foundry, so old logs are removed by hand from the Data folder.
  */
 
 export const LOG_DIR = "roll-lessons-logs";
-export const STATUS_FILE = "report-status.json";
 const FLUSH_MS = 30000;
 let queue = [];
 let timer = null;
@@ -74,9 +74,8 @@ function summarize(message) {
   return entries;
 }
 
-function enqueue(entries, now = false) {
+function enqueue(entries) {
   queue.push(...entries);
-  if (now) return flushLog();
   timer ??= setTimeout(flushLog, FLUSH_MS);
 }
 
@@ -86,29 +85,8 @@ export function logMessage(message) {
     const entries = summarize(message);
     if (entries.length) enqueue(entries);
   } catch (err) {
-    console.error(`${MODULE_ID} | log entry failed`, err);
+    log().error("roll log entry failed", err, { messageId: message?.id });
   }
-}
-
-/** A report from the Error or Unclear button. Logged even when the roll log is off, and written at once. */
-export function logReport(report) {
-  return enqueue([{ ...report, type: "report" }], true);
-}
-
-const seenIssues = new Set();
-
-/**
- * A panel row that could not be explained. Always written to the console; added to the roll log when this
- * browser is the log writer (the active GM). One entry per message, key and reason.
- */
-export function logIssue(issue) {
-  const id = `${issue.message}|${issue.key}|${issue.reason}`;
-  if (seenIssues.has(id)) return;
-  seenIssues.add(id);
-  const entry = { t: new Date().toISOString(), type: "panel-issue", ...issue, user: game.user?.name, browser: globalThis.navigator?.userAgent, versions: versions() };
-  console.warn(`${MODULE_ID} | panel issue`, entry);
-  if (!cfg.rollLog || !isWriter()) return;
-  enqueue([entry]);
 }
 
 async function ensureDir(path) {
@@ -142,7 +120,7 @@ export async function flushLog() {
     if (res === false) throw new Error("upload refused");
     return pending.length;
   } catch (err) {
-    console.error(`${MODULE_ID} | log write failed`, err);
+    log().error("roll log write failed", err, { dir, name, entries: pending.length });
     queue = pending.concat(queue);
     timer ??= setTimeout(flushLog, FLUSH_MS);
     return 0;
@@ -158,7 +136,7 @@ async function browse(path) {
 /** Every log file: daily files from older versions and batch files. */
 export async function listLogFiles() {
   const root = await browse(LOG_DIR);
-  const files = (root.files ?? []).filter(f => f.endsWith(".json") && !f.endsWith(STATUS_FILE));
+  const files = (root.files ?? []).filter(f => f.endsWith(".json"));
   for (const d of root.dirs ?? []) {
     const sub = await browse(d);
     files.push(...(sub.files ?? []).filter(f => f.endsWith(".json")));
@@ -182,19 +160,4 @@ export async function readAllLogs({ onlyReports = false } = {}) {
     for (const e of list) if (!onlyReports || e?.type === "report") out.push({ ...e, _file: path });
   }
   return out;
-}
-
-/** Review status of reports: { [reportId]: { s: "fixed"|"reworded"|"wontfix", v?: version, note?: text } }. */
-export async function readReportStatus() {
-  return (await readJSON(`${LOG_DIR}/${STATUS_FILE}`)) ?? {};
-}
-
-export async function setReportStatus(ids, status) {
-  const all = await readReportStatus();
-  for (const id of [].concat(ids)) {
-    if (status === null) delete all[id];
-    else all[id] = { ...status, at: new Date().toISOString() };
-  }
-  await upload(LOG_DIR, STATUS_FILE, all);
-  return all;
 }

@@ -6,6 +6,7 @@ A Foundry VTT module for the dnd5e system. It adds a collapsible panel under eve
 
 - Foundry VTT v14
 - dnd5e system 6.0.0 or newer (built against 6.0.6)
+- [usedtp Logger](https://github.com/usedtp/usedtp-logger) 1.0.0 or newer. Foundry installs it with Roll Lessons; enable both in the world.
 
 ## Install
 
@@ -48,13 +49,11 @@ Open **Game Settings**, **Configure Settings**, **Roll Lessons**.
 | Detail level | Beginner | Beginner shows rule text. Advanced shows labels and values |
 | Open breakdowns by default | On | Shows each panel open under its roll |
 | Custom rule text (JSON) | Empty | Overrides the wording of any rule |
-| Debug logging | Off | Writes roll details to the browser console |
-| Roll log (GM) | On | Saves every roll's breakdown and every report to `Data/roll-lessons-logs/`, one folder per day |
+| Roll log (GM) | On | Saves every roll's breakdown to `Data/roll-lessons-logs/`, one folder per day |
 | Hide damage that can only be 0 | On | Hides damage rolls that can only total 0, such as True Strike's extra damage below level 5 |
 | Error and Unclear buttons | On | Shows the report buttons under every breakdown |
 | GM to-do bar | On | Orange bar at the top of the GM's screen listing effects, damage and healing that still need applying, each with a fix button |
 | Effect check on spell and feature cards | On | Says when an effect (Rage, Mage Armor, Bless) never reached its creature, and applies it with one click |
-| Roll Lessons reports (GM) | Button | Opens the list of reports |
 
 Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 
@@ -68,6 +67,6 @@ Full details, limits and troubleshooting: [USER-GUIDE.md](USER-GUIDE.md).
 
 ## Report a problem
 
-In the game: click **Error** or **Unclear** under the breakdown. Mark the lines that are wrong, add a comment if you want, and send. The GM reads reports in **Configure Settings**, **Roll Lessons**, **Roll Lessons reports**.
+In the game: click **Error** or **Unclear** under the breakdown. Mark the lines that are wrong, add a comment if you want, and send. Reports go through usedtp Logger; the GM reads them in **Configure Settings**, **usedtp Logger**, **Open logs**.
 
 On GitHub: open an issue with your Foundry and dnd5e versions and the day's folder from `Data/roll-lessons-logs/`.

@@ -2,6 +2,17 @@
 
 Versions follow [Semantic Versioning](https://semver.org): MAJOR for breaking changes, MINOR for new features, PATCH for fixes.
 
+## 1.6.0 - 2026-11-06
+
+Diagnostics and reports now go through usedtp Logger.
+
+- Requires usedtp Logger 1.0.0 or newer. Foundry installs it with Roll Lessons.
+- Error and Unclear reports keep their dialog (tick the lines, add a comment) and are sent through usedtp Logger, which delivers them to the GM and queues them while no GM is online. The GM reads them in usedtp Logger's Log viewer, under Roll Lessons.
+- Panel rows that can't be explained, and errors inside Roll Lessons, are logged to usedtp Logger instead of the roll log and the browser console.
+- Removed: the Roll Lessons reports window and its settings button, report status marking, the Debug logging setting, and report delivery by Roll Lessons' own socket. The socket is kept only to apply effects for players.
+- The roll log (`Data/roll-lessons-logs/`) is unchanged and records rolls only. Reports already in it stay readable by `qa/roll-lessons-review.js`.
+- Releases publish automatically when module.json gets a new version on main.
+
 ## 1.5.1 - 2026-10-18
 
 Fixes from Error and Unclear reports.

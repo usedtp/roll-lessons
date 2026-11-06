@@ -1,4 +1,5 @@
 import { MODULE_ID } from "./settings.mjs";
+import { log } from "./diag.mjs";
 
 /**
  * Rule text from data/rules.json, merged with the world's custom JSON. Loaded once per client.
@@ -40,7 +41,7 @@ export class RuleBook {
       }
     }
     if (!base) {
-      console.error(`${MODULE_ID} | could not load rules.json from ${url}`, error);
+      log().error("could not load rules.json", error, { url });
       this.status = { state: "failed", error: String(error?.message ?? error), count: 0, url };
       Hooks.callAll(`${MODULE_ID}.rulesLoaded`, this.status);
       return false;

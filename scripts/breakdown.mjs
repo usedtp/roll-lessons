@@ -1,3 +1,4 @@
+import { log } from "./diag.mjs";
 import { RuleBook } from "./rules.mjs";
 import { cfg, MODULE_ID } from "./settings.mjs";
 import { expectedSources, findCombination } from "./phb.mjs";
@@ -480,9 +481,7 @@ export function buildLessons(config, rc, kind) {
     const off = inactiveEffects(x, kind, state.actionType, rc?.data ?? {});
     if (off) lessons.off = off;
   } catch (err) { /* never block a roll */ }
-  if (cfg.debug) {
-    console.log(`${MODULE_ID} | breakdown`, { kind, hookNames: config?.hookNames, parts: rc?.parts, data: rc?.data, lessons });
-  }
+  log().debug("breakdown", { kind, hookNames: config?.hookNames, parts: rc?.parts, lessons });
   return lessons;
 }
 

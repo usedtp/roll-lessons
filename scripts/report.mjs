@@ -1,34 +1,14 @@
-import { MODULE_ID, cfg } from "./settings.mjs";
-import { isWriter, logReport } from "./log.mjs";
+import { log } from "./diag.mjs";
 
 /*
- * "Error" and "Unclear" buttons under every panel. A report goes by socket to the active GM, whose browser
- * writes it to the roll log and shows a notice. With no GM online it waits in this browser's local storage
- * and is sent when a GM connects.
+ * "Error" and "Unclear" buttons under every panel. The dialog lets the reader tick the lines the report is
+ * about and add a comment. Sending, delivery to the GM and the offline queue are handled by usedtp Logger.
  */
 
-export const CHANNEL = `module.${MODULE_ID}`;
-const QUEUE_KEY = `${MODULE_ID}.pendingReports`;
-const ACK_MS = 5000;
 const COMMENT_MAX = 500;
-const waiting = new Map();
 
 const loc = key => game.i18n.localize(`ROLLLESSONS.report.${key}`);
-const fmt = (key, data) => game.i18n.format(`ROLLLESSONS.report.${key}`, data);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
-
-/** Reports waiting for a GM. Local storage can be missing or blocked, so every access is guarded. */
-export const storage = {
-  load() {
-    try { return JSON.parse(globalThis.localStorage?.getItem(QUEUE_KEY) ?? "[]") ?? []; } catch (err) { return []; }
-  },
-  save(list) {
-    try {
-      if (list.length) globalThis.localStorage?.setItem(QUEUE_KEY, JSON.stringify(list));
-      else globalThis.localStorage?.removeItem(QUEUE_KEY);
-    } catch (err) { /* storage blocked */ }
-  }
-};
 
 /** Text of a panel as the reader saw it: one line per row and note. */
 export function panelText(panel) {
@@ -39,91 +19,28 @@ export function panelText(panel) {
   return lines.join("\n");
 }
 
-export function buildReport({ category, message, index, roll, L, text, rows = [], comment }) {
-  const note = String(comment ?? "").trim().slice(0, COMMENT_MAX);
-  const report = {
-    id: foundry.utils.randomID(),
-    t: new Date().toISOString(),
-    category: category === "unclear" ? "unclear" : "error",
-    user: game.user?.name,
-    userId: game.user?.id,
-    message: message?.id,
+/** What a report carries: the roll it is about and the breakdown as shown. */
+export function reportContext({ message, index, roll, L, text, rows = [] }) {
+  return {
+    messageId: message?.id,
     roll: index,
-    speaker: message?.speaker?.alias,
     kind: L?.k,
     formula: roll?.formula,
     total: roll?.total,
     rows,
     panel: String(text ?? "").slice(0, 4000),
-    lessons: L,
-    versions: { foundry: game.version, dnd5e: game.system?.version, rollLessons: game.modules?.get(MODULE_ID)?.version }
+    lessons: L
   };
-  if (note) report.comment = note;
-  return report;
 }
 
-async function receive(report) {
-  await logReport(report);
-  if (game.user?.isGM) {
-    ui.notifications?.info(fmt("received", { user: report.user ?? "?", category: loc(report.category === "unclear" ? "unclear" : "error") }));
-  }
-}
-
-function emitWithAck(report) {
-  return new Promise(res => {
-    const timer = setTimeout(() => { waiting.delete(report.id); res(false); }, ACK_MS);
-    waiting.set(report.id, () => { clearTimeout(timer); waiting.delete(report.id); res(true); });
-    game.socket.emit(CHANNEL, { action: "report", report });
+/** Send a report through usedtp Logger and say what happened. */
+export async function sendReport(category, ctx, { rows = [], comment = "" } = {}) {
+  const outcome = await log().report(category === "unclear" ? "unclear" : "error", {
+    comment: String(comment ?? "").trim().slice(0, COMMENT_MAX),
+    context: reportContext({ ...ctx, text: panelText(ctx.panel), rows })
   });
-}
-
-function enqueueLocal(report) {
-  const list = storage.load();
-  if (!list.some(r => r.id === report.id)) list.push(report);
-  storage.save(list);
-}
-
-/** @returns {Promise<"logged"|"sent"|"queued">} */
-export async function sendReport(report) {
-  if (isWriter()) { await receive(report); return "logged"; }
-  if (!game.users?.activeGM) { enqueueLocal(report); return "queued"; }
-  if (await emitWithAck(report)) return "sent";
-  enqueueLocal(report);
-  return "queued";
-}
-
-export function onSocket(data) {
-  if (data?.action === "report") {
-    if (!isWriter() || !data.report) return;
-    receive(data.report)
-      .then(() => game.socket.emit(CHANNEL, { action: "reportAck", id: data.report.id, to: data.report.userId }))
-      .catch(err => console.error(`${MODULE_ID} | report not logged`, err));
-  } else if (data?.action === "reportAck") {
-    if (data.to === game.user?.id) waiting.get(data.id)?.();
-  }
-}
-
-let resending = false;
-
-/** Send reports saved while no GM was online. Runs at start-up and when a GM connects. */
-export async function resendQueued() {
-  if (resending) return 0;
-  const list = storage.load();
-  if (!list.length || (!isWriter() && !game.users?.activeGM)) return 0;
-  resending = true;
-  const left = [];
-  try {
-    for (const r of list) {
-      if (isWriter()) await receive(r);
-      else if (!(await emitWithAck(r))) left.push(r);
-    }
-  } finally {
-    storage.save(left);
-    resending = false;
-  }
-  const sent = list.length - left.length;
-  if (sent) ui.notifications?.info(fmt("resent", { count: sent }));
-  return sent;
+  ui.notifications?.info(loc(["logged", "sent", "queued"].includes(outcome) ? outcome : "queued"));
+  return outcome;
 }
 
 async function openDialog(category, ctx) {
@@ -155,9 +72,7 @@ async function openDialog(category, ctx) {
     rejectClose: false
   });
   if (!result) return;
-  const report = buildReport({ category, ...ctx, text: panelText(ctx.panel), rows: result.rows, comment: result.comment });
-  const outcome = await sendReport(report);
-  ui.notifications?.info(loc(outcome));
+  await sendReport(category, ctx, { rows: result.rows, comment: result.comment });
 }
 
 /** The two buttons at the bottom of a panel. */
@@ -176,17 +91,9 @@ export function reportBar(ctx) {
     b.addEventListener("click", ev => {
       ev.preventDefault();
       ev.stopPropagation();
-      openDialog(category, ctx).catch(err => console.error(`${MODULE_ID} | report failed`, err));
+      log().guard("report", () => openDialog(category, ctx));
     });
     bar.append(b);
   }
   return bar;
-}
-
-export function registerReports() {
-  game.socket?.on(CHANNEL, onSocket);
-  Hooks.on("userConnected", (user, connected) => {
-    if (connected && user?.isGM) setTimeout(() => resendQueued(), 3000);
-  });
-  if (cfg.enabled) setTimeout(() => resendQueued(), 3000);
 }

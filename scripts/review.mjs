@@ -33,9 +33,8 @@ export function rollFlags(e) {
 
 /**
  * @param {object[]} entries  log entries (any mix of rolls, reports and panel issues)
- * @param {object} status     report-status.json contents
  */
-export function review(entries, status = {}) {
+export function review(entries) {
   const seen = new Set();
   const reports = [];
   const issues = [];
@@ -46,7 +45,7 @@ export function review(entries, status = {}) {
       const id = e.id ?? `${e.t}|${e.user}|${e.message}`;
       if (seen.has(id)) continue;
       seen.add(id);
-      reports.push({ ...e, id, status: status[id] ?? null, cause: causeOf(e) });
+      reports.push({ ...e, id, cause: causeOf(e) });
     } else if (e?.type === "panel-issue") issues.push(e);
     else if (e && !e.type) {
       rolls++;
@@ -54,7 +53,7 @@ export function review(entries, status = {}) {
       if (why.length) flags.push({ t: e.t, message: e.message, kind: e.kind, formula: e.formula, total: e.total, why });
     }
   }
-  const open = reports.filter(r => !r.status);
+  const open = reports;
   const causes = {};
   for (const r of open) {
     const k = `${r.category} | ${r.cause}`;

@@ -183,6 +183,5 @@
 
   const count = s => results.filter(r => r.status === s).length;
   const summary = { version: game.modules.get(MOD)?.version, passed: count("passed"), failed: count("failed"), skipped: count("skipped"), results };
-  console.log("roll-lessons | QA", summary);
   return summary;
 })();

@@ -437,17 +437,6 @@
     const logged = ours.filter(id => ids.has(id)).length;
     const batches = (await api?.listLogFiles?.() ?? []).filter(f => /\/\d{4}-\d{2}-\d{2}\/\d{6}-/.test(f)).length;
     record("log", "roll log written to batch files and readable", batches > 0 && (logged === ours.length) ? [] : [`${batches} batch files, ${logged}/${ours.length} logged`], { flushed: n, entries: entries.length });
-    // A report goes through the same path a player's report takes on the GM side.
-    const msg1 = game.messages.get(ours[0]);
-    if (msg1 && api?.sendReport) {
-      const L = msg1.rolls[0].options.rollLessons;
-      const rep = api.buildReport({ category: "unclear", message: msg1, index: 0, roll: msg1.rolls[0], L, text: "bench", rows: [], comment: "Roll Lessons bench test report" });
-      const outcome = await api.sendReport(rep);
-      const all = await api.readAllLogs({ onlyReports: true });
-      const found = all.some(e => e.id === rep.id);
-      if (found) await api.setReportStatus(rep.id, { s: "wontfix", note: "bench test" });
-      record("log", "report logged and readable", outcome === "logged" && found ? [] : [`outcome ${outcome}, found ${found}`]);
-    }
   }
 
   /* ---------- Run ---------- */
